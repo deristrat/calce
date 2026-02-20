@@ -1,0 +1,199 @@
+# Rust Implementation Guidelines
+
+Coding conventions and patterns specific to this codebase. Add to this as patterns emerge.
+
+## Domain Types Are Data Carriers
+
+Domain types (`domain/`) hold data and nothing more. They provide:
+
+- **Construction and validation** — `new`, `try_new`
+- **Accessors** — `value()`, `as_str()`
+- **Same-type arithmetic** — `Quantity + Quantity`, `Money + Money`
+- **Algebraic properties of the type itself** — `FxRate::invert()`, `FxRate::identity()`
+- **Intrinsic conversions** — `Money::convert(rate)` (currency conversion is fundamental to what money *is*)
+
+They do **not** contain:
+
+- Business logic that combines multiple domain types for a purpose (e.g. aggregating trades into positions)
+- Service dependencies or I/O
+- Application-specific computations
+
+All business logic lives in `calc/`. If you're writing a function that operates *on* domain types for a business purpose, it belongs in `calc/`, not on the type itself.
+
+```rust
+// Good — Money::convert is intrinsic to Money (like unit conversion)
+let sek = money_usd.convert(&usd_to_sek)?;
+
+// Good — aggregate_positions is business logic, lives in calc/
+let positions = aggregation::aggregate_positions(&trades, as_of_date);
+
+// Bad — pricing logic on a domain type
+impl Position {
+    fn market_value(&self, price: Price) -> Money { ... }  // belongs in calc/
+}
+```
+
+## No Dead Code
+
+Don't add trait impls, error variants, or functions speculatively. Add them when they're needed. Unused code is confusing — readers wonder "where is this used?" and find nothing.
+
+If a refactor makes something unused (e.g. removing `TradeSide` made `Quantity::Neg` dead), remove it in the same change.
+
+## Module Structure
+
+Use the simplest module structure that works:
+- Single file → `src/foo.rs` (not `src/foo/mod.rs`)
+- Multiple files → `src/foo/mod.rs` + `src/foo/bar.rs`
+
+Don't create a directory for a single file.
+
+## HashMap Key Types
+
+**Use domain types as HashMap keys, not raw strings.**
+
+Bad — allocates a String on every lookup:
+```rust
+// Key is String, every lookup does .as_str().to_string()
+prices: HashMap<(String, NaiveDate), Price>
+
+self.prices.get(&(instrument.as_str().to_string(), date))
+```
+
+Good — Currency is Copy, zero-allocation lookup:
+```rust
+fx_rates: HashMap<(Currency, Currency, NaiveDate), FxRate>
+
+self.fx_rates.get(&(from, to, date))  // no allocation
+```
+
+Acceptable — InstrumentId as key requires clone on lookup, but gives type safety:
+```rust
+prices: HashMap<(InstrumentId, NaiveDate), Price>
+
+self.prices.get(&(instrument.clone(), date))  // clones, but type-safe
+```
+
+**Rationale:** `Currency` is `Copy` (backed by `[u8; 3]`), so using it directly as a key avoids the `String` round-trip entirely. For `InstrumentId` (backed by `String`), the clone cost is the same as `to_string()`, but you get compile-time assurance that you're using the right type.
+
+**Future optimization:** If profiling shows `InstrumentId` cloning is hot, consider `Arc<str>` backing or a two-level HashMap (`HashMap<InstrumentId, HashMap<NaiveDate, Price>>`).
+
+## Copy Types
+
+Types that are small and frequently passed around should be `Copy`:
+- `Currency` — `[u8; 3]`, always Copy
+- `Quantity`, `Price`, `FxRate`, `Money` — all backed by `Decimal` which is Copy
+- `NaiveDate` — Copy by default
+
+This avoids unnecessary cloning and makes HashMap key usage cheap.
+
+## Derive What You Can
+
+Prefer `#[derive(...)]` over manual trait impls when the derived behavior is correct:
+
+```rust
+// Good — derive does exactly what the manual impl would
+#[derive(Default)]
+pub struct InMemoryMarketDataService {
+    prices: HashMap<...>,
+    fx_rates: HashMap<...>,
+}
+
+// Good — thiserror derive for error types, even in domain modules
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("FX rate expects {expected}, but money is in {actual}")]
+pub struct CurrencyMismatch { ... }
+```
+
+Manual impls are only warranted when the derived behavior is wrong (e.g. `Currency`'s custom `Debug` that shows the string instead of raw bytes).
+
+## Newtype Constructors
+
+Domain newtypes use `::new()` constructors, not `From` impls. This keeps construction explicit and avoids accidental conversions:
+
+```rust
+// Good — explicit
+let qty = Quantity::new(dec!(100));
+let price = Price::new(dec!(50));
+
+// Avoid — implicit conversion could hide bugs
+impl From<Decimal> for Quantity { ... }
+let qty: Quantity = dec!(100).into();  // too easy to mix up types
+```
+
+**For types with validation**, use the dual constructor pattern:
+
+- `try_new(input) -> Result<Self, Error>` — fallible, for runtime/user data
+- `new(input) -> Self` — panicking convenience, calls `try_new` internally. For known-valid constants and tests only.
+
+```rust
+// Currency validates A-Z only
+let usd = Currency::new("USD");           // tests, known constants
+let parsed = Currency::try_new(input)?;   // runtime data from files, APIs
+```
+
+Simple newtypes without validation (e.g. `Quantity`, `Price`) only need `new`.
+
+## Standard Trait Impls for Domain Types
+
+Implement standard Rust traits where they make sense:
+
+- **`FromStr`** — for any type constructible from a string. Delegates to `try_new`:
+  ```rust
+  impl FromStr for Currency {
+      type Err = InvalidCurrencyCode;
+      fn from_str(s: &str) -> Result<Self, Self::Err> { Self::try_new(s) }
+  }
+  // Enables: let usd: Currency = "USD".parse()?;
+  ```
+
+- **`AsRef<str>`** — for types that can be viewed as a string without allocation:
+  ```rust
+  impl AsRef<str> for Currency { fn as_ref(&self) -> &str { self.as_str() } }
+  ```
+
+- **`Display`** — for user-facing output. `Debug` — for developer diagnostics.
+
+Don't implement traits speculatively — add them when needed.
+
+## No Unnecessary `unsafe`
+
+Don't use `unsafe` to skip trivial checks. The cost of safe validation on small data (e.g. `from_utf8` on 3 bytes) is negligible, and `unsafe` makes code harder to audit and maintain. Only reach for `unsafe` when profiling proves a safe alternative is a bottleneck.
+
+## Error Handling Patterns
+
+**Domain types define their own small errors.** The top-level `CalceError` aggregates them via `#[from]`:
+
+```rust
+// domain/money.rs — small, focused error using thiserror
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("FX rate expects {expected}, but money is in {actual}")]
+pub struct CurrencyMismatch { pub expected: Currency, pub actual: Currency }
+
+// error.rs — aggregates domain errors
+enum CalceError {
+    CurrencyMismatch(#[from] CurrencyMismatch),
+    ...
+}
+```
+
+This avoids circular dependencies (domain types don't import `CalceError`) and keeps each module self-contained.
+
+**Only add error variants that are used.** Don't add speculative variants — they create noise and make the error enum harder to match on exhaustively.
+
+## Test Patterns
+
+**Calculation function tests** — construct positions and an `InMemoryMarketDataService`. No auth, no user data, just the calculation:
+```rust
+let mut market_data = InMemoryMarketDataService::new();
+market_data.add_price(&aapl, date, Price::new(dec!(150)));
+let ctx = CalculationContext::new(usd, date);
+let result = value_positions(&positions, &ctx, &market_data).unwrap();
+```
+
+**Engine/integration tests** — full pipeline including auth and trade loading:
+```rust
+let engine = CalcEngine::new(&ctx, &security_ctx, &market_data, &user_data);
+let result = engine.market_value_for_user(&alice).unwrap();
+```
+
+Calculation tests are fast and focused. Engine tests verify the wiring (auth, aggregation, delegation).
