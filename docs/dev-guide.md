@@ -30,7 +30,7 @@
 | `statrs` | Statistical distributions (Normal, t, etc.) for VaR |
 | `rand` / `rand_distr` | RNG for Monte Carlo |
 | `rayon` | Parallel iteration (Monte Carlo paths, batch processing) |
-| `rust_decimal` | Decimal precision for complex monetary arithmetic |
+| `rust_decimal` | Exact arithmetic for ledger accounting, fee splits |
 
 ### Supporting
 
@@ -48,82 +48,27 @@
 
 ## Numeric Types — The Rules
 
-**Never use `f64` for money.** This is the single most important rule.
-
-```rust
-// WRONG — will accumulate rounding errors
-let balance: f64 = 100.10 + 0.20; // != 100.30 in IEEE 754
-
-// RIGHT — integer cents, zero precision loss
-let balance_cents: i64 = 10010 + 20; // == 10030, always
-```
-
 ### When to use what
 
 | Type | Use for | Example |
 |------|---------|---------|
-| `i64` (cents) | Balances, positions, P&L, transaction amounts | `Money<USD>` with `amount_cents: i64` |
-| `i64` (fixed-point ×10000) | Market prices with sub-cent precision | `Price` storing $150.4325 as `1_504_325` |
-| `rust_decimal::Decimal` | Pro-rata splits, fee calculations, intermediate precision | Dividing $100 across 3 positions |
-| `f64` | Monte Carlo, statistics, volatility, correlations | Everything in `faer`, `statrs`, `ndarray` |
+| `f64` | Portfolio analytics: market valuations, risk metrics, FX conversions, Monte Carlo | `Quantity`, `Price`, `Money`, `FxRate` in `domain/` |
+| `rust_decimal::Decimal` | Ledger accounting: balances that must sum exactly, fee splits, pro-rata allocations | `Balance`, `LedgerEntry` in `accounting/` |
+| `i64` (cents) | High-volume transaction processing where Decimal overhead matters | Settlement systems (not in this crate) |
 
-### Currency-tagged money (MUST use)
+**Why f64 for analytics?** Portfolio tracking does multiplication-heavy work (qty × price × fx_rate) where the inputs are already approximate (market prices change by the second). f64 gives native operators, feeds directly into statistical crates (`faer`, `statrs`, `ndarray`), and has zero overhead. Decimal adds friction for accuracy that doesn't matter here.
 
-The compiler prevents mixing currencies. This caught 8 bugs in production at one trading firm.
+**Why Decimal for accounting?** Ledger balancing requires exact arithmetic — debits and credits must net to zero, not to 1e-15. Use `rust_decimal::Decimal` in the `accounting` module for this.
 
-```rust
-use std::marker::PhantomData;
+### Currency safety
 
-pub trait Currency {
-    const CODE: &'static str;
-    const SYMBOL: &'static str;
-}
-
-pub struct USD;
-impl Currency for USD {
-    const CODE: &'static str = "USD";
-    const SYMBOL: &'static str = "$";
-}
-
-pub struct EUR;
-impl Currency for EUR {
-    const CODE: &'static str = "EUR";
-    const SYMBOL: &'static str = "€";
-}
-
-pub struct Money<C: Currency> {
-    amount_cents: i64,
-    _currency: PhantomData<C>,
-}
-
-// Only same-currency addition compiles
-impl<C: Currency> std::ops::Add for Money<C> {
-    type Output = Self;
-    fn add(self, other: Self) -> Self {
-        Money { amount_cents: self.amount_cents + other.amount_cents, _currency: PhantomData }
-    }
-}
-
-let usd = Money::<USD>::from_cents(1000);
-let eur = Money::<EUR>::from_cents(500);
-// let total = usd + eur;  // COMPILE ERROR — this is the point
-```
-
-### Conversion boundary (Money ↔ f64)
-
-Keep these few and well-tested. Every crossing is a potential rounding bug.
+Currency mismatches are caught at runtime via `Money::checked_add` and `Money::convert`, which return `Result<_, CurrencyMismatch>`:
 
 ```rust
-impl<C: Currency> Money<C> {
-    pub fn to_f64(&self) -> f64 {
-        self.amount_cents as f64 / 100.0
-    }
-
-    pub fn from_f64_rounded(value: f64) -> Self {
-        // Banker's rounding (half-even) is the financial standard
-        Money::from_cents((value * 100.0).round() as i64)
-    }
-}
+let usd_money = Money::new(100.0, Currency::new("USD"));
+let sek_money = Money::new(200.0, Currency::new("SEK"));
+// Returns Err(CurrencyMismatch { .. })
+let _ = usd_money.checked_add(sek_money);
 ```
 
 ---
@@ -401,7 +346,7 @@ fn bench_cholesky(c: &mut Criterion) {
 | Do | Don't |
 |----|-------|
 | `Result<T, E>` + `?` operator | `.unwrap()` / `.expect()` in library code |
-| `Money<USD>` with `i64` cents | `f64` for monetary values |
+| `f64` for analytics, `Decimal` for accounting | Mixing numeric types without clear rationale |
 | `tracing::info!(field = %val, "msg")` | `println!()` |
 | `tokio::task::spawn_blocking` for CPU work | Heavy computation on the async runtime |
 | `tokio::time::timeout` on external calls | Unbounded async calls to APIs/DBs |

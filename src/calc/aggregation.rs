@@ -23,7 +23,7 @@ pub fn aggregate_positions(trades: &[Trade], as_of_date: NaiveDate) -> Vec<Posit
 
     let mut positions: Vec<Position> = net
         .into_iter()
-        .filter(|(_, (qty, _))| !qty.value().is_zero())
+        .filter(|(_, (qty, _))| !qty.is_zero())
         .map(|(id, (qty, ccy))| Position {
             instrument_id: id,
             quantity: qty,
@@ -42,7 +42,6 @@ mod tests {
     use crate::domain::currency::Currency;
     use crate::domain::price::Price;
     use crate::domain::user::UserId;
-    use rust_decimal_macros::dec;
 
     #[test]
     fn aggregates_buys_and_sells() {
@@ -55,16 +54,16 @@ mod tests {
             Trade {
                 user_id: alice.clone(),
                 instrument_id: aapl.clone(),
-                quantity: Quantity::new(dec!(100)),
-                price: Price::new(dec!(145)),
+                quantity: Quantity::new(100.0),
+                price: Price::new(145.0),
                 currency: usd,
                 date,
             },
             Trade {
                 user_id: alice,
                 instrument_id: aapl,
-                quantity: Quantity::new(dec!(-30)),
-                price: Price::new(dec!(150)),
+                quantity: Quantity::new(-30.0),
+                price: Price::new(150.0),
                 currency: usd,
                 date,
             },
@@ -72,7 +71,7 @@ mod tests {
 
         let positions = aggregate_positions(&trades, date);
         assert_eq!(positions.len(), 1);
-        assert_eq!(positions[0].quantity.value(), dec!(70));
+        assert_eq!(positions[0].quantity.value(), 70.0);
     }
 
     #[test]
@@ -86,16 +85,16 @@ mod tests {
             Trade {
                 user_id: alice.clone(),
                 instrument_id: aapl.clone(),
-                quantity: Quantity::new(dec!(100)),
-                price: Price::new(dec!(145)),
+                quantity: Quantity::new(100.0),
+                price: Price::new(145.0),
                 currency: usd,
                 date,
             },
             Trade {
                 user_id: alice,
                 instrument_id: aapl,
-                quantity: Quantity::new(dec!(-100)),
-                price: Price::new(dec!(150)),
+                quantity: Quantity::new(-100.0),
+                price: Price::new(150.0),
                 currency: usd,
                 date,
             },
@@ -117,16 +116,16 @@ mod tests {
             Trade {
                 user_id: alice.clone(),
                 instrument_id: aapl.clone(),
-                quantity: Quantity::new(dec!(50)),
-                price: Price::new(dec!(140)),
+                quantity: Quantity::new(50.0),
+                price: Price::new(140.0),
                 currency: usd,
                 date: early,
             },
             Trade {
                 user_id: alice,
                 instrument_id: aapl,
-                quantity: Quantity::new(dec!(30)),
-                price: Price::new(dec!(150)),
+                quantity: Quantity::new(30.0),
+                price: Price::new(150.0),
                 currency: usd,
                 date: late,
             },
@@ -134,6 +133,6 @@ mod tests {
 
         let positions = aggregate_positions(&trades, early);
         assert_eq!(positions.len(), 1);
-        assert_eq!(positions[0].quantity.value(), dec!(50));
+        assert_eq!(positions[0].quantity.value(), 50.0);
     }
 }

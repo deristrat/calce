@@ -81,10 +81,12 @@ self.prices.get(&(instrument.clone(), date))  // clones, but type-safe
 
 Types that are small and frequently passed around should be `Copy`:
 - `Currency` — `[u8; 3]`, always Copy
-- `Quantity`, `Price`, `FxRate`, `Money` — all backed by `Decimal` which is Copy
+- `Quantity`, `Price`, `FxRate`, `Money` — all backed by `f64` which is Copy
 - `NaiveDate` — Copy by default
 
 This avoids unnecessary cloning and makes HashMap key usage cheap.
+
+Note: `f64`-backed types derive `PartialEq` but **not** `Eq` or `Hash` (IEEE 754 NaN breaks reflexivity). If you need a HashMap key with an f64 field, wrap it or use an ordered container.
 
 ## Derive What You Can
 
@@ -112,12 +114,12 @@ Domain newtypes use `::new()` constructors, not `From` impls. This keeps constru
 
 ```rust
 // Good — explicit
-let qty = Quantity::new(dec!(100));
-let price = Price::new(dec!(50));
+let qty = Quantity::new(100.0);
+let price = Price::new(50.0);
 
 // Avoid — implicit conversion could hide bugs
-impl From<Decimal> for Quantity { ... }
-let qty: Quantity = dec!(100).into();  // too easy to mix up types
+impl From<f64> for Quantity { ... }
+let qty: Quantity = 100.0.into();  // too easy to mix up types
 ```
 
 **For types with validation**, use the dual constructor pattern:
@@ -185,7 +187,7 @@ This avoids circular dependencies (domain types don't import `CalceError`) and k
 **Calculation function tests** — construct positions and an `InMemoryMarketDataService`. No auth, no user data, just the calculation:
 ```rust
 let mut market_data = InMemoryMarketDataService::new();
-market_data.add_price(&aapl, date, Price::new(dec!(150)));
+market_data.add_price(&aapl, date, Price::new(150.0));
 let ctx = CalculationContext::new(usd, date);
 let result = value_positions(&positions, &ctx, &market_data).unwrap();
 ```

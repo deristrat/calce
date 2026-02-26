@@ -6,13 +6,25 @@ Financial calculation engine for portfolio tracking.
 
 ```
 CalcEngine (orchestration) — wires services to pure functions
-├── calc/     — pure business logic, no side effects
-├── services/ — trait-based data access, in-memory test impls
-└── domain/   — data types only, no business logic
+├── accounting/ — exact-precision ledger arithmetic (Decimal)
+├── calc/      — pure business logic, no side effects
+├── services/  — trait-based data access, in-memory test impls
+└── domain/    — data types only, no business logic
 ```
 
 Domain types are data carriers. Business logic belongs in `calc/`.
 Intrinsic operations (e.g. `Money::convert`, `FxRate::invert`) are fine on domain types.
+
+## Numeric Types
+
+| Type | Use for | Module |
+|------|---------|--------|
+| `f64` | Market valuations, risk metrics, FX conversions, portfolio analytics | `domain/`, `calc/` |
+| `rust_decimal::Decimal` | Ledger balancing, fee splits, any arithmetic that must be exact | `accounting/` |
+
+Domain types (`Quantity`, `Price`, `Money`, `FxRate`) use `f64`. They derive `PartialEq` but **not** `Eq` (f64 is not `Eq`).
+
+The `accounting` module uses `Decimal` for exact ledger arithmetic where debits and credits must balance to zero.
 
 ## Comments
 

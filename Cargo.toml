@@ -5,7 +5,8 @@ edition = "2024"
 
 [dependencies]
 rust_decimal = "1"
-rust_decimal_macros = "1"
 thiserror = "2"
 chrono = { version = "0.4", default-features = false, features = ["std"] }
-derive_more = { version = "1", features = ["add", "display"] }
+
+[dev-dependencies]
+rust_decimal_macros = "1"

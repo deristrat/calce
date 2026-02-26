@@ -81,7 +81,6 @@ mod tests {
     use crate::domain::quantity::Quantity;
     use crate::services::market_data::InMemoryMarketDataService;
     use chrono::NaiveDate;
-    use rust_decimal_macros::dec;
 
     fn date() -> NaiveDate {
         NaiveDate::from_ymd_opt(2025, 1, 15).expect("valid test date")
@@ -93,17 +92,17 @@ mod tests {
         let aapl = InstrumentId::new("AAPL");
 
         let mut market_data = InMemoryMarketDataService::new();
-        market_data.add_price(&aapl, date(), Price::new(dec!(150)));
+        market_data.add_price(&aapl, date(), Price::new(150.0));
 
         let positions = vec![Position {
             instrument_id: aapl,
-            quantity: Quantity::new(dec!(100)),
+            quantity: Quantity::new(100.0),
             currency: usd,
         }];
         let ctx = CalculationContext::new(usd, date());
 
         let result = value_positions(&positions, &ctx, &market_data).expect("should succeed");
-        assert_eq!(result.total.amount, dec!(15000));
+        assert_eq!(result.total.amount, 15000.0);
         assert_eq!(result.total.currency, usd);
     }
 
@@ -114,19 +113,19 @@ mod tests {
         let aapl = InstrumentId::new("AAPL");
 
         let mut market_data = InMemoryMarketDataService::new();
-        market_data.add_price(&aapl, date(), Price::new(dec!(150)));
-        market_data.add_fx_rate(FxRate::new(usd, sek, dec!(10)), date());
+        market_data.add_price(&aapl, date(), Price::new(150.0));
+        market_data.add_fx_rate(FxRate::new(usd, sek, 10.0), date());
 
         let positions = vec![Position {
             instrument_id: aapl,
-            quantity: Quantity::new(dec!(10)),
+            quantity: Quantity::new(10.0),
             currency: usd,
         }];
         let ctx = CalculationContext::new(sek, date());
 
         let result = value_positions(&positions, &ctx, &market_data).expect("should succeed");
         // 10 * 150 = 1500 USD -> 1500 * 10 = 15000 SEK
-        assert_eq!(result.total.amount, dec!(15000));
+        assert_eq!(result.total.amount, 15000.0);
         assert_eq!(result.total.currency, sek);
     }
 
@@ -138,7 +137,7 @@ mod tests {
 
         let positions = vec![Position {
             instrument_id: aapl,
-            quantity: Quantity::new(dec!(100)),
+            quantity: Quantity::new(100.0),
             currency: usd,
         }];
         let ctx = CalculationContext::new(usd, date());
@@ -154,7 +153,7 @@ mod tests {
         let ctx = CalculationContext::new(sek, date());
 
         let result = value_positions(&[], &ctx, &market_data).expect("should succeed");
-        assert_eq!(result.total.amount, dec!(0));
+        assert_eq!(result.total.amount, 0.0);
         assert!(result.positions.is_empty());
     }
 }

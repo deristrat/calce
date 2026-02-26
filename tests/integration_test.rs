@@ -1,5 +1,4 @@
 use chrono::NaiveDate;
-use rust_decimal_macros::dec;
 
 use calce::auth::{Role, SecurityContext};
 use calce::calc::engine::CalcEngine;
@@ -32,10 +31,10 @@ fn setup_multi_currency_scenario() -> (
     let vow3 = InstrumentId::new("VOW3");
 
     let mut market_data = InMemoryMarketDataService::new();
-    market_data.add_price(&aapl, date, Price::new(dec!(150)));
-    market_data.add_price(&vow3, date, Price::new(dec!(120)));
-    market_data.add_fx_rate(FxRate::new(usd, sek, dec!(10.5)), date);
-    market_data.add_fx_rate(FxRate::new(eur, sek, dec!(11.4)), date);
+    market_data.add_price(&aapl, date, Price::new(150.0));
+    market_data.add_price(&vow3, date, Price::new(120.0));
+    market_data.add_fx_rate(FxRate::new(usd, sek, 10.5), date);
+    market_data.add_fx_rate(FxRate::new(eur, sek, 11.4), date);
 
     let mut user_data = InMemoryUserDataService::new();
 
@@ -43,16 +42,16 @@ fn setup_multi_currency_scenario() -> (
     user_data.add_trade(Trade {
         user_id: alice.clone(),
         instrument_id: aapl.clone(),
-        quantity: Quantity::new(dec!(100)),
-        price: Price::new(dec!(145)),
+        quantity: Quantity::new(100.0),
+        price: Price::new(145.0),
         currency: usd,
         date,
     });
     user_data.add_trade(Trade {
         user_id: alice.clone(),
         instrument_id: aapl,
-        quantity: Quantity::new(dec!(-20)),
-        price: Price::new(dec!(155)),
+        quantity: Quantity::new(-20.0),
+        price: Price::new(155.0),
         currency: usd,
         date,
     });
@@ -61,8 +60,8 @@ fn setup_multi_currency_scenario() -> (
     user_data.add_trade(Trade {
         user_id: alice.clone(),
         instrument_id: vow3,
-        quantity: Quantity::new(dec!(50)),
-        price: Price::new(dec!(115)),
+        quantity: Quantity::new(50.0),
+        price: Price::new(115.0),
         currency: eur,
         date,
     });
@@ -91,20 +90,20 @@ fn engine_multi_currency_portfolio() {
     // VOW3: 50 * 120 = 6,000 EUR → 6,000 * 11.4 = 68,400 SEK
     // Total: 126,000 + 68,400 = 194,400 SEK
     assert_eq!(result.positions.len(), 2);
-    assert_eq!(result.total.amount, dec!(194400.0));
+    assert_eq!(result.total.amount, 194_400.0);
     assert_eq!(result.total.currency, sek);
 
     let aapl_pos = &result.positions[0];
     assert_eq!(aapl_pos.instrument_id.as_str(), "AAPL");
-    assert_eq!(aapl_pos.quantity.value(), dec!(80));
-    assert_eq!(aapl_pos.market_value.amount, dec!(12000));
-    assert_eq!(aapl_pos.market_value_base.amount, dec!(126000.0));
+    assert_eq!(aapl_pos.quantity.value(), 80.0);
+    assert_eq!(aapl_pos.market_value.amount, 12_000.0);
+    assert_eq!(aapl_pos.market_value_base.amount, 126_000.0);
 
     let vow3_pos = &result.positions[1];
     assert_eq!(vow3_pos.instrument_id.as_str(), "VOW3");
-    assert_eq!(vow3_pos.quantity.value(), dec!(50));
-    assert_eq!(vow3_pos.market_value.amount, dec!(6000));
-    assert_eq!(vow3_pos.market_value_base.amount, dec!(68400.0));
+    assert_eq!(vow3_pos.quantity.value(), 50.0);
+    assert_eq!(vow3_pos.market_value.amount, 6_000.0);
+    assert_eq!(vow3_pos.market_value_base.amount, 68_400.0);
 }
 
 #[test]
@@ -152,22 +151,22 @@ fn engine_retroactive_calculation() {
     let late = NaiveDate::from_ymd_opt(2025, 1, 20).unwrap();
 
     let mut market_data = InMemoryMarketDataService::new();
-    market_data.add_price(&aapl, early, Price::new(dec!(140)));
+    market_data.add_price(&aapl, early, Price::new(140.0));
 
     let mut user_data = InMemoryUserDataService::new();
     user_data.add_trade(Trade {
         user_id: alice.clone(),
         instrument_id: aapl.clone(),
-        quantity: Quantity::new(dec!(50)),
-        price: Price::new(dec!(135)),
+        quantity: Quantity::new(50.0),
+        price: Price::new(135.0),
         currency: usd,
         date: early,
     });
     user_data.add_trade(Trade {
         user_id: alice.clone(),
         instrument_id: aapl,
-        quantity: Quantity::new(dec!(30)),
-        price: Price::new(dec!(145)),
+        quantity: Quantity::new(30.0),
+        price: Price::new(145.0),
         currency: usd,
         date: late,
     });
@@ -181,9 +180,9 @@ fn engine_retroactive_calculation() {
         .expect("calculation should succeed");
 
     assert_eq!(result.positions.len(), 1);
-    assert_eq!(result.positions[0].quantity.value(), dec!(50));
+    assert_eq!(result.positions[0].quantity.value(), 50.0);
     // 50 * 140 = 7,000 USD (same currency, no FX)
-    assert_eq!(result.total.amount, dec!(7000));
+    assert_eq!(result.total.amount, 7_000.0);
 }
 
 // ---------------------------------------------------------------------------
@@ -200,20 +199,20 @@ fn value_positions_multi_currency() {
     let date = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
 
     let mut market_data = InMemoryMarketDataService::new();
-    market_data.add_price(&aapl, date, Price::new(dec!(150)));
-    market_data.add_price(&vow3, date, Price::new(dec!(120)));
-    market_data.add_fx_rate(FxRate::new(usd, sek, dec!(10.5)), date);
-    market_data.add_fx_rate(FxRate::new(eur, sek, dec!(11.4)), date);
+    market_data.add_price(&aapl, date, Price::new(150.0));
+    market_data.add_price(&vow3, date, Price::new(120.0));
+    market_data.add_fx_rate(FxRate::new(usd, sek, 10.5), date);
+    market_data.add_fx_rate(FxRate::new(eur, sek, 11.4), date);
 
     let positions = vec![
         calce::domain::position::Position {
             instrument_id: aapl,
-            quantity: Quantity::new(dec!(80)),
+            quantity: Quantity::new(80.0),
             currency: usd,
         },
         calce::domain::position::Position {
             instrument_id: vow3,
-            quantity: Quantity::new(dec!(50)),
+            quantity: Quantity::new(50.0),
             currency: eur,
         },
     ];
@@ -221,7 +220,7 @@ fn value_positions_multi_currency() {
 
     let result = value_positions(&positions, &ctx, &market_data).unwrap();
 
-    assert_eq!(result.total.amount, dec!(194400.0));
+    assert_eq!(result.total.amount, 194_400.0);
     assert_eq!(result.total.currency, sek);
 }
 
@@ -236,16 +235,16 @@ fn aggregate_then_value() {
         Trade {
             user_id: alice.clone(),
             instrument_id: aapl.clone(),
-            quantity: Quantity::new(dec!(100)),
-            price: Price::new(dec!(145)),
+            quantity: Quantity::new(100.0),
+            price: Price::new(145.0),
             currency: usd,
             date,
         },
         Trade {
             user_id: alice,
             instrument_id: aapl.clone(),
-            quantity: Quantity::new(dec!(-40)),
-            price: Price::new(dec!(155)),
+            quantity: Quantity::new(-40.0),
+            price: Price::new(155.0),
             currency: usd,
             date,
         },
@@ -254,13 +253,13 @@ fn aggregate_then_value() {
     // Step 1: aggregate trades into positions
     let positions = aggregate_positions(&trades, date);
     assert_eq!(positions.len(), 1);
-    assert_eq!(positions[0].quantity.value(), dec!(60));
+    assert_eq!(positions[0].quantity.value(), 60.0);
 
     // Step 2: value positions
     let mut market_data = InMemoryMarketDataService::new();
-    market_data.add_price(&aapl, date, Price::new(dec!(150)));
+    market_data.add_price(&aapl, date, Price::new(150.0));
     let ctx = CalculationContext::new(usd, date);
 
     let result = value_positions(&positions, &ctx, &market_data).unwrap();
-    assert_eq!(result.total.amount, dec!(9000)); // 60 * 150
+    assert_eq!(result.total.amount, 9_000.0); // 60 * 150
 }
