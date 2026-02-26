@@ -48,7 +48,13 @@ Core types:
 - **Currency** — ISO 4217 code
 
 Identity types:
-- **UserId**, **InstrumentId**, **TradeId** _(planned)_, **AccountId** _(planned)_
+- **UserId**, **AccountId**, **InstrumentId**, **TradeId** _(planned)_
+
+### Account
+
+An account groups trades under a user. It has its own currency and a label (e.g. "Avanza ISK", "Interactive Brokers USD"). A trade belongs to exactly one account.
+
+Account currency is used for account-level reporting. When aggregating across accounts for a user, values are converted to the base currency from `CalculationContext`.
 
 ## Services (`services/`)
 
@@ -69,13 +75,13 @@ Provides market prices and FX rates. Read-only. May be split into `PriceService`
 
 ```rust
 trait UserDataService {
-    fn get_trades(&self, ctx: &SecurityContext, user_id: &UserId) -> CalceResult<Vec<Trade>>;
+    fn get_accounts(&self, ctx: &SecurityContext, user_id: &UserId) -> CalceResult<Vec<Account>>;
+    fn get_trades_for_user(&self, ctx: &SecurityContext, user_id: &UserId) -> CalceResult<Vec<Trade>>;
+    fn get_trades_for_account(&self, ctx: &SecurityContext, account_id: &AccountId) -> CalceResult<Vec<Trade>>;
 }
 ```
 
-Loads trades for a user. Authorization is checked here at the service boundary, not inside calculation logic.
-
-As the system grows this will expand to support account-level queries, date filtering, etc.
+Loads accounts and trades. Authorization is checked here at the service boundary — if the caller can access the user, they can access all their accounts. No account-level permissions.
 
 ## Calculations (`calc/`)
 
@@ -133,8 +139,10 @@ Two modes for every calculation. Internally they share the same pure function.
 The caller identifies _what_ to calculate (which user, which account). The engine loads the required data and performs the calculation.
 
 ```
-market_value_for_user(user_id) → MarketValueResult
-pnl_for_user(user_id)         → PnlResult
+market_value_for_user(user_id)       → MarketValueResult
+market_value_for_account(account_id) → MarketValueResult
+pnl_for_user(user_id)               → PnlResult
+pnl_for_account(account_id)         → PnlResult
 ```
 
 Use cases: production application serving a logged-in user, scheduled batch jobs.
@@ -180,25 +188,9 @@ pub struct SecurityContext {
 
 Used by the stateful path only. The stateless path has no concept of authorization — if you have the data, you can calculate.
 
-## Open Design Questions
+## Partial Results
 
-### Account model
-
-The current domain has `UserId` but no account concept. Most portfolio systems have **User → Account → Trades**. Accounts allow:
-- Multiple portfolios per user (e.g. retirement, brokerage, ISA)
-- Account-level calculations (market value _of this account_)
-- Account-level permissions
-
-**Suggestion:** introduce `AccountId` as a first-class concept. A trade belongs to an account. `UserDataService` can load trades by user (all accounts) or by account.
-
-### Partial results vs fail-fast
-
-When 1 out of 50 positions is missing a price, should the calculation:
-
-1. **Fail** — return an error (current behavior, simple but harsh)
-2. **Partial result** — return 49 valued positions + a list of what failed
-
-Option 2 is the right production answer. A wrapper type:
+Calculations return partial results rather than failing on the first missing data point. A portfolio with 50 positions where 1 price is missing returns 49 valued positions plus a warning about the missing one.
 
 ```rust
 struct Outcome<T> {
@@ -207,7 +199,9 @@ struct Outcome<T> {
 }
 ```
 
-This affects every calculation function signature, so the decision should be made before building out P&L, risk, etc.
+Every calculation function returns `Outcome<T>` (or `CalceResult<Outcome<T>>` for errors that genuinely prevent any calculation). Warnings carry enough context for the caller to understand what was skipped and why.
+
+## Open Design Questions
 
 ### Composed calculations
 

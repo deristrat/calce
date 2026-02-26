@@ -39,6 +39,7 @@ pub fn aggregate_positions(trades: &[Trade], as_of_date: NaiveDate) -> Vec<Posit
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::account::AccountId;
     use crate::domain::currency::Currency;
     use crate::domain::price::Price;
     use crate::domain::user::UserId;
@@ -49,10 +50,12 @@ mod tests {
         let usd = Currency::new("USD");
         let aapl = InstrumentId::new("AAPL");
         let alice = UserId::new("alice");
+        let acct = AccountId::new("alice-usd");
 
         let trades = vec![
             Trade {
                 user_id: alice.clone(),
+                account_id: acct.clone(),
                 instrument_id: aapl.clone(),
                 quantity: Quantity::new(100.0),
                 price: Price::new(145.0),
@@ -61,6 +64,7 @@ mod tests {
             },
             Trade {
                 user_id: alice,
+                account_id: acct,
                 instrument_id: aapl,
                 quantity: Quantity::new(-30.0),
                 price: Price::new(150.0),
@@ -80,10 +84,12 @@ mod tests {
         let usd = Currency::new("USD");
         let aapl = InstrumentId::new("AAPL");
         let alice = UserId::new("alice");
+        let acct = AccountId::new("alice-usd");
 
         let trades = vec![
             Trade {
                 user_id: alice.clone(),
+                account_id: acct.clone(),
                 instrument_id: aapl.clone(),
                 quantity: Quantity::new(100.0),
                 price: Price::new(145.0),
@@ -92,6 +98,7 @@ mod tests {
             },
             Trade {
                 user_id: alice,
+                account_id: acct,
                 instrument_id: aapl,
                 quantity: Quantity::new(-100.0),
                 price: Price::new(150.0),
@@ -111,10 +118,12 @@ mod tests {
         let usd = Currency::new("USD");
         let aapl = InstrumentId::new("AAPL");
         let alice = UserId::new("alice");
+        let acct = AccountId::new("alice-usd");
 
         let trades = vec![
             Trade {
                 user_id: alice.clone(),
+                account_id: acct.clone(),
                 instrument_id: aapl.clone(),
                 quantity: Quantity::new(50.0),
                 price: Price::new(140.0),
@@ -123,6 +132,7 @@ mod tests {
             },
             Trade {
                 user_id: alice,
+                account_id: acct,
                 instrument_id: aapl,
                 quantity: Quantity::new(30.0),
                 price: Price::new(150.0),

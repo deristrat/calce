@@ -4,6 +4,7 @@ use calce::auth::{Role, SecurityContext};
 use calce::calc::engine::CalcEngine;
 use calce::calc::market_value::value_positions;
 use calce::context::CalculationContext;
+use calce::domain::account::AccountId;
 use calce::domain::currency::Currency;
 use calce::domain::fx_rate::FxRate;
 use calce::domain::instrument::InstrumentId;
@@ -23,6 +24,8 @@ fn setup_multi_currency_scenario() -> (
     NaiveDate,
 ) {
     let alice = UserId::new("alice");
+    let acct_usd = AccountId::new("alice-usd");
+    let acct_eur = AccountId::new("alice-eur");
     let date = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
     let usd = Currency::new("USD");
     let eur = Currency::new("EUR");
@@ -41,6 +44,7 @@ fn setup_multi_currency_scenario() -> (
     // Alice buys 100 AAPL, sells 20 → net 80
     user_data.add_trade(Trade {
         user_id: alice.clone(),
+        account_id: acct_usd.clone(),
         instrument_id: aapl.clone(),
         quantity: Quantity::new(100.0),
         price: Price::new(145.0),
@@ -49,6 +53,7 @@ fn setup_multi_currency_scenario() -> (
     });
     user_data.add_trade(Trade {
         user_id: alice.clone(),
+        account_id: acct_usd.clone(),
         instrument_id: aapl,
         quantity: Quantity::new(-20.0),
         price: Price::new(155.0),
@@ -59,6 +64,7 @@ fn setup_multi_currency_scenario() -> (
     // Alice buys 50 VOW3
     user_data.add_trade(Trade {
         user_id: alice.clone(),
+        account_id: acct_eur,
         instrument_id: vow3,
         quantity: Quantity::new(50.0),
         price: Price::new(115.0),
@@ -144,6 +150,7 @@ fn engine_admin_can_access_any_user() {
 #[test]
 fn engine_retroactive_calculation() {
     let alice = UserId::new("alice");
+    let acct = AccountId::new("alice-usd");
     let usd = Currency::new("USD");
     let aapl = InstrumentId::new("AAPL");
 
@@ -156,6 +163,7 @@ fn engine_retroactive_calculation() {
     let mut user_data = InMemoryUserDataService::new();
     user_data.add_trade(Trade {
         user_id: alice.clone(),
+        account_id: acct.clone(),
         instrument_id: aapl.clone(),
         quantity: Quantity::new(50.0),
         price: Price::new(135.0),
@@ -164,6 +172,7 @@ fn engine_retroactive_calculation() {
     });
     user_data.add_trade(Trade {
         user_id: alice.clone(),
+        account_id: acct,
         instrument_id: aapl,
         quantity: Quantity::new(30.0),
         price: Price::new(145.0),
@@ -229,11 +238,13 @@ fn aggregate_then_value() {
     let usd = Currency::new("USD");
     let aapl = InstrumentId::new("AAPL");
     let alice = UserId::new("alice");
+    let acct = AccountId::new("alice-usd");
     let date = NaiveDate::from_ymd_opt(2025, 1, 15).unwrap();
 
     let trades = vec![
         Trade {
             user_id: alice.clone(),
+            account_id: acct.clone(),
             instrument_id: aapl.clone(),
             quantity: Quantity::new(100.0),
             price: Price::new(145.0),
@@ -242,6 +253,7 @@ fn aggregate_then_value() {
         },
         Trade {
             user_id: alice,
+            account_id: acct,
             instrument_id: aapl.clone(),
             quantity: Quantity::new(-40.0),
             price: Price::new(155.0),
