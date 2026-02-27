@@ -1,7 +1,7 @@
 use chrono::NaiveDate;
 
 use calce::auth::{Role, SecurityContext};
-use calce::calc::engine::CalcEngine;
+use calce::engine::CalcEngine;
 use calce::calc::market_value::value_positions;
 use calce::context::CalculationContext;
 use calce::domain::account::AccountId;
@@ -274,4 +274,65 @@ fn aggregate_then_value() {
 
     let result = value_positions(&positions, &ctx, &market_data).unwrap();
     assert_eq!(result.total.amount, 9_000.0); // 60 * 150
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio report — engine-level integration test
+// ---------------------------------------------------------------------------
+
+#[test]
+fn engine_portfolio_report() {
+    let alice = UserId::new("alice");
+    let acct = AccountId::new("alice-usd");
+    let usd = Currency::new("USD");
+    let sek = Currency::new("SEK");
+    let aapl = InstrumentId::new("AAPL");
+
+    let today = NaiveDate::from_ymd_opt(2025, 3, 15).unwrap();
+    let day_ago = today - chrono::Days::new(1);
+    let week_ago = today - chrono::Days::new(7);
+    let year_ago = NaiveDate::from_ymd_opt(2024, 3, 15).unwrap();
+    let prev_year_end = NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
+
+    let trade_date = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
+
+    let mut market_data = InMemoryMarketDataService::new();
+    market_data.add_price(&aapl, today, Price::new(200.0));
+    market_data.add_price(&aapl, day_ago, Price::new(198.0));
+    market_data.add_price(&aapl, week_ago, Price::new(190.0));
+    market_data.add_price(&aapl, year_ago, Price::new(160.0));
+    market_data.add_price(&aapl, prev_year_end, Price::new(180.0));
+    for date in [today, day_ago, week_ago, year_ago, prev_year_end] {
+        market_data.add_fx_rate(FxRate::new(usd, sek, 10.0), date);
+    }
+
+    let mut user_data = InMemoryUserDataService::new();
+    user_data.add_trade(Trade {
+        user_id: alice.clone(),
+        account_id: acct,
+        instrument_id: aapl,
+        quantity: Quantity::new(100.0),
+        price: Price::new(150.0),
+        currency: usd,
+        date: trade_date,
+    });
+
+    let ctx = CalculationContext::new(sek, today);
+    let security_ctx = SecurityContext::new(alice.clone(), Role::User);
+    let engine = CalcEngine::new(&ctx, &security_ctx, &market_data, &user_data);
+
+    let report = engine
+        .portfolio_report_for_user(&alice)
+        .expect("report should succeed");
+
+    // Market value: 100 * 200 * 10 = 200,000 SEK
+    assert_eq!(report.market_value.total.amount, 200_000.0);
+    assert_eq!(report.market_value.positions.len(), 1);
+
+    // Value changes
+    assert_eq!(report.value_changes.market_value.amount, 200_000.0);
+    assert_eq!(report.value_changes.daily.change.amount, 2_000.0);
+    assert_eq!(report.value_changes.weekly.change.amount, 10_000.0);
+    assert_eq!(report.value_changes.yearly.change.amount, 40_000.0);
+    assert_eq!(report.value_changes.ytd.change.amount, 20_000.0);
 }

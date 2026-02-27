@@ -24,6 +24,8 @@ pub struct MarketValueResult {
     pub total: Money,
 }
 
+/// `#CALC_MV`
+///
 /// # Errors
 ///
 /// Returns `PriceNotFound` if a position's instrument has no price.

@@ -7,6 +7,8 @@ use crate::domain::position::Position;
 use crate::domain::quantity::Quantity;
 use crate::domain::trade::Trade;
 
+/// `#CALC_POS_AGG`
+///
 /// Trades after `as_of_date` are excluded. Fully closed positions (zero net quantity) are omitted.
 #[must_use]
 pub fn aggregate_positions(trades: &[Trade], as_of_date: NaiveDate) -> Vec<Position> {

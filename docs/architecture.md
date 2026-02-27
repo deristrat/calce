@@ -21,13 +21,18 @@ Financial calculation engine for portfolio tracking, valuation, and analytics.
 │  Wires services → pure calc functions               │
 │  Holds context, security, service references        │
 ├──────────────────────┬──────────────────────────────┤
-│  Services            │  Calculations (calc/)        │
-│  Data loading traits │  Pure functions              │
-│  market data         │  aggregation                 │
-│  user/account data   │  market_value                │
-│                      │  pnl                         │
-│                      │  cost_basis                  │
-│                      │  risk                        │
+│  Services            │  Reports (reports/)           │
+│  Data loading traits │  Composed views for consumers │
+│  market data         │  portfolio (MV + changes)     │
+│  user/account data   │                               │
+│                      │  Calculations (calc/)         │
+│                      │  Pure functions               │
+│                      │  aggregation                  │
+│                      │  market_value                 │
+│                      │  value_change                 │
+│                      │  pnl                          │
+│                      │  cost_basis                   │
+│                      │  risk                         │
 ├──────────────────────┴──────────────────────────────┤
 │  Domain Types                                       │
 │  Trade, Position, Money, FxRate, Quantity, Price ... │
@@ -110,9 +115,20 @@ Note: `MarketDataService` is a read-only lookup trait, so passing it doesn't vio
 | `cost_basis` | trades | cost basis per position | Average cost, supports FIFO/average methods |
 | `risk` | positions, prices, historical data | risk metrics | Exposure, concentration, currency risk |
 
-Each builds on the ones above. For example, P&L needs cost basis and market value. The dependency is through data, not through function calls — the engine orchestrates which calculations to run and feeds results forward.
+### Composition
 
-## CalcEngine (Orchestration)
+Calculations compose by calling each other. A higher-level calculation receives the same inputs (trades, market data, context) and calls lower-level calculations internally. For example, `value_change_summary` calls `aggregate_positions` and `value_positions` at multiple dates, then computes the diff.
+
+The pattern has four levels:
+
+1. **Primitive** — single-purpose, takes exactly what it needs: `value_positions(positions, ctx, market_data)`
+2. **Composite** — calls primitives at multiple points or combines results: `value_change_summary(trades, ctx, market_data)` calls `aggregate_positions` + `value_positions` for each comparison date
+3. **Report** (`reports/`) — bundles multiple calc primitives/composites into a single consumer-facing result, sharing intermediate values to avoid redundant computation: `portfolio_report(trades, ctx, market_data)` computes market value once and passes it to value change
+4. **Engine** — orchestrates data loading then delegates to pure functions at any level
+
+This keeps each function testable in isolation. A future optimization is to cache intermediate results (e.g. a calculation graph that reuses already-computed market values), but the function-call structure doesn't need to change for that — caching wraps the same functions.
+
+## CalcEngine (`engine.rs` — Orchestration)
 
 ```rust
 pub struct CalcEngine<'a> {
@@ -125,7 +141,7 @@ pub struct CalcEngine<'a> {
 
 The engine is the **stateful** entry point. It:
 1. Loads data via services (with authorization)
-2. Calls pure calculation functions
+2. Delegates to pure `calc/` functions or `reports/` composites
 3. Returns results
 
 It does not contain business logic itself — it wires services to calculations.
@@ -139,10 +155,11 @@ Two modes for every calculation. Internally they share the same pure function.
 The caller identifies _what_ to calculate (which user, which account). The engine loads the required data and performs the calculation.
 
 ```
-market_value_for_user(user_id)       → MarketValueResult
-market_value_for_account(account_id) → MarketValueResult
-pnl_for_user(user_id)               → PnlResult
-pnl_for_account(account_id)         → PnlResult
+market_value_for_user(user_id)        → MarketValueResult
+market_value_for_account(account_id)  → MarketValueResult
+portfolio_report_for_user(user_id)    → PortfolioReport
+pnl_for_user(user_id)                → PnlResult
+pnl_for_account(account_id)          → PnlResult
 ```
 
 Use cases: production application serving a logged-in user, scheduled batch jobs.
@@ -201,23 +218,15 @@ struct Outcome<T> {
 
 Every calculation function returns `Outcome<T>` (or `CalceResult<Outcome<T>>` for errors that genuinely prevent any calculation). Warnings carry enough context for the caller to understand what was skipped and why.
 
+## Reports (`reports/`)
+
+Composed views that bundle multiple `calc/` results into a single consumer-facing struct. Reports share intermediate values (e.g. the current-date `MarketValueResult`) to avoid redundant computation. Each report has a pure function (stateless) and a corresponding engine method (stateful).
+
+Current reports:
+- **`portfolio_report`** — market value + value changes. Aggregates trades once, values once, passes the snapshot to value change.
+
 ## Open Design Questions
 
-### Composed calculations
+### Caching intermediate results
 
-If a caller wants market value + P&L + risk in one call, they could make 3 separate calls. But this duplicates data loading and aggregation.
-
-Options:
-- **Portfolio report** — a higher-level function that runs multiple calculations on the same loaded data and returns a composite result
-- **Keep it simple** — let the caller compose, optimize later
-
-Starting simple is fine, but the architecture should not prevent the composed path.
-
-### Time-series calculations
-
-Current engine is point-in-time (`as_of_date`). Many use cases need time-series:
-- Daily P&L over a month
-- Historical NAV chart
-- Drawdown analysis
-
-These can be built as loops over point-in-time calculations initially, with optimization (incremental computation, caching) added later. The pure-function design supports this well — call the same function for each date.
+When composite calculations call the same primitive multiple times (e.g. `value_change_summary` calls `value_positions` at 5 dates), there may be overlap with other composite calculations that need the same snapshots. A calculation cache or result graph could avoid redundant work. The pure-function design makes this straightforward to add later — wrap the same functions with memoization.

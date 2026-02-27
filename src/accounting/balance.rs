@@ -23,6 +23,8 @@ pub struct MixedCurrency {
     pub actual: Currency,
 }
 
+/// `#CALC_LEDGER_BAL`
+///
 /// Sum ledger entries into a single balance. All entries must share the
 /// expected currency.
 ///

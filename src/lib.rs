@@ -13,5 +13,7 @@ pub mod auth;
 pub mod calc;
 pub mod context;
 pub mod domain;
+pub mod engine;
 pub mod error;
+pub mod reports;
 pub mod services;
