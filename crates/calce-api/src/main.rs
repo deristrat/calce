@@ -34,6 +34,10 @@ async fn main() {
             "/v1/users/{user_id}/portfolio",
             get(routes::portfolio_report),
         )
+        .route(
+            "/v1/instruments/{instrument_id}/volatility",
+            get(routes::volatility),
+        )
         .layer(CorsLayer::very_permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state);

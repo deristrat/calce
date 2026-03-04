@@ -7,7 +7,9 @@ use calce_core::domain::user::UserId;
 
 use crate::domain::Currency;
 use crate::errors::calce_err_to_py;
-use crate::results::{MarketValueResult, PortfolioReport};
+use calce_core::domain::instrument::InstrumentId;
+
+use crate::results::{MarketValueResult, PortfolioReport, VolatilityResult};
 use crate::services::{MarketData, UserData};
 
 #[pyclass]
@@ -77,6 +79,33 @@ impl CalcEngine {
         engine
             .portfolio_report_for_user(&self.user_id)
             .map(|r| PortfolioReport { inner: r })
+            .map_err(calce_err_to_py)
+    }
+
+    /// Compute historical realized volatility for an instrument.
+    ///
+    /// Args:
+    ///     instrument_id: Instrument ticker/identifier.
+    ///     lookback_days: Calendar days of history (default 1095 = 3 years).
+    #[pyo3(signature = (instrument_id, lookback_days = 1095))]
+    fn volatility(
+        &self,
+        py: Python<'_>,
+        instrument_id: &str,
+        lookback_days: u32,
+    ) -> PyResult<VolatilityResult> {
+        let md = self.market_data.borrow(py);
+        let ud = self.user_data.borrow(py);
+        let engine = calce_core::engine::CalcEngine::new(
+            &self.ctx,
+            &self.security_ctx,
+            &md.inner,
+            &ud.inner,
+        );
+        let instrument = InstrumentId::new(instrument_id);
+        engine
+            .volatility(&instrument, lookback_days)
+            .map(|r| VolatilityResult { inner: r })
             .map_err(calce_err_to_py)
     }
 }

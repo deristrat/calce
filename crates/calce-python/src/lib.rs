@@ -26,6 +26,7 @@ fn calce(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<results::ValueChange>()?;
     m.add_class::<results::ValueChangeSummary>()?;
     m.add_class::<results::PortfolioReport>()?;
+    m.add_class::<results::VolatilityResult>()?;
 
     // Exceptions
     errors::register(m)?;

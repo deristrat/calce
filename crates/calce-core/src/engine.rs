@@ -1,7 +1,9 @@
 use crate::auth::SecurityContext;
 use crate::calc::aggregation;
 use crate::calc::market_value::{self, MarketValueResult};
+use crate::calc::volatility::{self, VolatilityResult};
 use crate::context::CalculationContext;
+use crate::domain::instrument::InstrumentId;
 use crate::domain::user::UserId;
 use crate::error::CalceResult;
 use crate::reports::portfolio::{self, PortfolioReport};
@@ -57,5 +59,23 @@ impl<'a> CalcEngine<'a> {
     ) -> CalceResult<PortfolioReport> {
         let trades = self.user_data.get_trades(self.security_ctx, user_id)?;
         portfolio::portfolio_report(&trades, self.ctx, self.market_data)
+    }
+
+    /// `#CALC_VOL` — instrument-scoped, does not require user data or auth.
+    ///
+    /// # Errors
+    ///
+    /// Returns `InsufficientData` if the instrument lacks enough price history.
+    pub fn volatility(
+        &self,
+        instrument: &InstrumentId,
+        lookback_days: u32,
+    ) -> CalceResult<VolatilityResult> {
+        volatility::calculate_volatility(
+            instrument,
+            self.ctx.as_of_date,
+            lookback_days,
+            self.market_data,
+        )
     }
 }

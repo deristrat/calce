@@ -1,3 +1,4 @@
+use chrono::NaiveDate;
 use pyo3::prelude::*;
 
 use crate::domain::{Currency, Money};
@@ -250,6 +251,50 @@ impl PortfolioReport {
             "PortfolioReport(market_value={}, positions={})",
             self.inner.market_value.total,
             self.inner.market_value.positions.len(),
+        )
+    }
+}
+
+#[pyclass(frozen)]
+pub struct VolatilityResult {
+    pub inner: calce_core::calc::volatility::VolatilityResult,
+}
+
+#[pymethods]
+impl VolatilityResult {
+    #[getter]
+    fn annualized_volatility(&self) -> f64 {
+        self.inner.annualized_volatility
+    }
+
+    #[getter]
+    fn daily_volatility(&self) -> f64 {
+        self.inner.daily_volatility
+    }
+
+    #[getter]
+    fn num_observations(&self) -> usize {
+        self.inner.num_observations
+    }
+
+    #[getter]
+    fn start_date(&self) -> NaiveDate {
+        self.inner.start_date
+    }
+
+    #[getter]
+    fn end_date(&self) -> NaiveDate {
+        self.inner.end_date
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "VolatilityResult(annualized={:.4}, daily={:.6}, obs={}, {}..{})",
+            self.inner.annualized_volatility,
+            self.inner.daily_volatility,
+            self.inner.num_observations,
+            self.inner.start_date,
+            self.inner.end_date,
         )
     }
 }
