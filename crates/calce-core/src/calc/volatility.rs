@@ -1,8 +1,12 @@
 use chrono::NaiveDate;
 
 use crate::domain::instrument::InstrumentId;
-use crate::error::CalceResult;
+use crate::domain::price::Price;
+use crate::error::{CalceError, CalceResult};
 use crate::services::market_data::MarketDataService;
+
+const TRADING_DAYS_PER_YEAR: f64 = 252.0;
+const MIN_HISTORY_DAYS: i64 = 60;
 
 #[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -32,7 +36,86 @@ pub fn calculate_volatility(
     lookback_days: u32,
     market_data: &dyn MarketDataService,
 ) -> CalceResult<VolatilityResult> {
-    todo!()
+    let from = as_of_date - chrono::Days::new(u64::from(lookback_days));
+    let all_prices = market_data.get_price_history(instrument, from, as_of_date)?;
+
+    let valid: Vec<(NaiveDate, Price)> = all_prices
+        .iter()
+        .filter(|(_, p)| p.value() > 0.0)
+        .copied()
+        .collect();
+
+    validate(instrument, as_of_date, &all_prices, &valid)?;
+
+    let log_returns: Vec<f64> = valid
+        .windows(2)
+        .map(|w| (w[1].1.value() / w[0].1.value()).ln())
+        .collect();
+
+    let daily_vol = sample_std_dev(&log_returns);
+
+    if !daily_vol.is_finite() {
+        return Err(CalceError::InsufficientData {
+            instrument: instrument.clone(),
+            reason: "standard deviation is not finite".into(),
+        });
+    }
+
+    let annualized_vol = daily_vol * TRADING_DAYS_PER_YEAR.sqrt();
+
+    // Safe: validate() ensures valid has at least 2 entries.
+    let start_date = valid[0].0;
+    let end_date = valid[valid.len() - 1].0;
+
+    Ok(VolatilityResult {
+        annualized_volatility: annualized_vol,
+        daily_volatility: daily_vol,
+        num_observations: log_returns.len(),
+        start_date,
+        end_date,
+    })
+}
+
+fn validate(
+    instrument: &InstrumentId,
+    as_of_date: NaiveDate,
+    all_prices: &[(NaiveDate, Price)],
+    valid: &[(NaiveDate, Price)],
+) -> CalceResult<()> {
+    let err = |reason: &str| CalceError::InsufficientData {
+        instrument: instrument.clone(),
+        reason: reason.into(),
+    };
+
+    if valid.len() < 2 {
+        return Err(err("fewer than 2 valid prices"));
+    }
+
+    let first_date = valid[0].0;
+    if (as_of_date - first_date).num_days() < MIN_HISTORY_DAYS {
+        return Err(err("need at least 60 days of history"));
+    }
+
+    // Completeness: of all records from first valid price onward,
+    // at least 80% must be positive.
+    let records_in_period = all_prices.iter().filter(|(d, _)| *d >= first_date).count();
+    if records_in_period > 0 && valid.len() * 100 / records_in_period < 80 {
+        return Err(err("less than 80% price coverage"));
+    }
+
+    Ok(())
+}
+
+#[allow(clippy::cast_precision_loss)] // price counts will never exceed 2^52
+fn sample_std_dev(values: &[f64]) -> f64 {
+    let n = values.len();
+    if n < 2 {
+        return f64::NAN;
+    }
+    let nf = n as f64;
+    let mean = values.iter().sum::<f64>() / nf;
+    let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / (nf - 1.0);
+    variance.sqrt()
 }
 
 #[cfg(test)]
