@@ -34,6 +34,9 @@ impl IntoResponse for ApiError {
                 CalceError::FxRateNotFound { .. } => {
                     (StatusCode::INTERNAL_SERVER_ERROR, "FX_RATE_NOT_FOUND", err.to_string())
                 }
+                CalceError::InsufficientData { .. } => {
+                    (StatusCode::UNPROCESSABLE_ENTITY, "INSUFFICIENT_DATA", err.to_string())
+                }
             },
         };
 
