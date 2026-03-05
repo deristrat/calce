@@ -14,7 +14,7 @@ fn date(y: i32, m: u32, d: u32) -> NaiveDate {
     NaiveDate::from_ymd_opt(y, m, d).expect("valid seed date")
 }
 
-pub fn seed_market_data() -> InMemoryMarketDataService {
+pub(crate) fn seed_market_data() -> InMemoryMarketDataService {
     let mut svc = InMemoryMarketDataService::new();
 
     let usd = Currency::new("USD");
@@ -83,7 +83,7 @@ fn add_daily_fx_rates(
     }
 }
 
-pub fn seed_user_data() -> InMemoryUserDataService {
+pub(crate) fn seed_user_data() -> InMemoryUserDataService {
     let mut svc = InMemoryUserDataService::new();
 
     let alice = UserId::new("alice");

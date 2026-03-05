@@ -36,4 +36,7 @@ pub enum CalceError {
 
     #[error("Currency mismatch: {0}")]
     CurrencyMismatch(#[from] CurrencyMismatch),
+
+    #[error("Data error: {0}")]
+    DataError(String),
 }

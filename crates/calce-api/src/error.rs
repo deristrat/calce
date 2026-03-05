@@ -37,6 +37,9 @@ impl IntoResponse for ApiError {
                 CalceError::InsufficientData { .. } => {
                     (StatusCode::UNPROCESSABLE_ENTITY, "INSUFFICIENT_DATA", err.to_string())
                 }
+                CalceError::DataError(_) => {
+                    (StatusCode::INTERNAL_SERVER_ERROR, "DATA_ERROR", err.to_string())
+                }
             },
         };
 

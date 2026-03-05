@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: calce
+      POSTGRES_USER: calce
+      POSTGRES_PASSWORD: calce
+    volumes:
+      - calce_pgdata:/var/lib/postgresql/data
+
+volumes:
+  calce_pgdata:

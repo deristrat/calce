@@ -2,6 +2,10 @@ use std::sync::Arc;
 
 use axum::Router;
 use axum::routing::get;
+use calce_data::engine::AsyncCalcEngine;
+use calce_data::repo::market_data::MarketDataRepo;
+use calce_data::repo::user_data::UserDataRepo;
+use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::EnvFilter;
@@ -9,8 +13,10 @@ use tracing_subscriber::EnvFilter;
 mod auth;
 mod error;
 mod routes;
-mod seed;
 mod state;
+
+#[cfg(test)]
+mod seed;
 
 use state::AppState;
 
@@ -39,9 +45,26 @@ async fn main() {
         .with_env_filter(EnvFilter::from_default_env())
         .init();
 
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://calce:calce@localhost:5433/calce".into());
+
+    let pool = PgPool::connect(&database_url)
+        .await
+        .expect("failed to connect to database");
+
+    sqlx::migrate!("../calce-data/migrations")
+        .run(&pool)
+        .await
+        .expect("failed to run migrations");
+
+    tracing::info!("Database connected and migrations applied");
+
+    let engine = AsyncCalcEngine::new(
+        MarketDataRepo::new(pool.clone()),
+        UserDataRepo::new(pool),
+    );
     let state = AppState {
-        market_data: Arc::new(seed::seed_market_data()),
-        user_data: Arc::new(seed::seed_user_data()),
+        engine: Arc::new(engine),
     };
 
     let app = build_router(state);
@@ -63,9 +86,12 @@ mod tests {
     use tower::ServiceExt;
 
     fn test_state() -> AppState {
+        let engine = AsyncCalcEngine::from_in_memory(
+            seed::seed_market_data(),
+            seed::seed_user_data(),
+        );
         AppState {
-            market_data: Arc::new(seed::seed_market_data()),
-            user_data: Arc::new(seed::seed_user_data()),
+            engine: Arc::new(engine),
         }
     }
 
@@ -138,7 +164,7 @@ mod tests {
     async fn volatility_returns_result() {
         let (status, body) = get(
             "/v1/instruments/AAPL/volatility?as_of_date=2025-03-14&lookback_days=365",
-            &[],
+            &auth_headers(),
         ).await;
 
         assert_eq!(status, StatusCode::OK);
@@ -153,7 +179,7 @@ mod tests {
     async fn volatility_defaults_lookback_to_3_years() {
         let (status, body) = get(
             "/v1/instruments/AAPL/volatility?as_of_date=2025-03-14",
-            &[],
+            &auth_headers(),
         ).await;
 
         assert_eq!(status, StatusCode::OK);
@@ -164,7 +190,7 @@ mod tests {
     async fn volatility_unknown_instrument_returns_error() {
         let (status, _) = get(
             "/v1/instruments/DOESNOTEXIST/volatility?as_of_date=2025-03-14",
-            &[],
+            &auth_headers(),
         ).await;
 
         // PriceNotFound → 500
@@ -172,13 +198,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn volatility_needs_no_auth() {
-        // No auth headers — should still succeed
+    async fn volatility_missing_auth_returns_401() {
         let (status, _) = get(
             "/v1/instruments/AAPL/volatility?as_of_date=2025-03-14&lookback_days=365",
             &[],
         ).await;
 
-        assert_eq!(status, StatusCode::OK);
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
     }
 }
