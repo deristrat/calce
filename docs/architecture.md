@@ -8,35 +8,46 @@ Financial calculation engine for portfolio tracking, valuation, and analytics.
 2. **Dual API** — every calculation is available in two modes: _stateful_ (engine loads data, then calculates) and _stateless_ (caller provides data directly).
 3. **Plain data types** — domain types carry data, not behavior. Business logic lives in `calc/`.
 4. **Trait-based data access** — services are traits, swappable for testing, caching, or different backends.
+5. **Sync core, async boundaries** — calce-core is 100% sync with no DB or async dependencies. Async data loading lives in calce-data; calce-core stays fast to compile and easy to test.
+
+## Crate Structure
+
+```
+calce-core    (sync, pure — domain types, calc functions, service traits)
+    ↑
+calce-data    (async — sqlx repos, AsyncCalcEngine, Postgres access)
+    ↑
+calce-api     (async — axum HTTP handlers, thin layer over AsyncCalcEngine)
+
+calce-python  (PyO3 bindings, depends on calce-core only)
+```
 
 ## Layers
 
 ```
-┌─────────────────────────────────────────────────────┐
-│  API Layer                                          │
-│  Stateful endpoints    Stateless endpoints          │
-│  (user/account based)  (caller provides data)       │
-├─────────────────────────────────────────────────────┤
-│  CalcEngine (orchestration)                         │
-│  Wires services → pure calc functions               │
-│  Holds context, security, service references        │
-├──────────────────────┬──────────────────────────────┤
-│  Services            │  Reports (reports/)           │
-│  Data loading traits │  Composed views for consumers │
-│  market data         │  portfolio (MV + changes)     │
-│  user/account data   │                               │
-│                      │  Calculations (calc/)         │
-│                      │  Pure functions               │
-│                      │  aggregation                  │
-│                      │  market_value                 │
-│                      │  value_change                 │
-│                      │  pnl                          │
-│                      │  cost_basis                   │
-│                      │  risk                         │
-├──────────────────────┴──────────────────────────────┤
-│  Domain Types                                       │
-│  Trade, Position, Money, FxRate, Quantity, Price ... │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│  calce-api — HTTP Layer                              │
+│  Thin axum handlers, auth extraction, param parsing  │
+├──────────────────────────────────────────────────────┤
+│  calce-data — Data Layer                             │
+│  AsyncCalcEngine (orchestration)                     │
+│  Repos: MarketDataRepo, UserDataRepo (sqlx/Postgres) │
+│  Loads data async → delegates to sync calce-core     │
+├──────────────────────────────────────────────────────┤
+│  calce-core — Calculation Layer                      │
+│                                                      │
+│  CalcEngine        │  Reports (reports/)              │
+│  Sync orchestrator │  Composed views for consumers    │
+│  Wires services    │  portfolio (MV + changes)        │
+│  to calc functions │                                  │
+│                    │  Calculations (calc/)             │
+│  Services          │  Pure functions                   │
+│  Data access traits│  aggregation, market_value        │
+│  InMemory impls    │  value_change, volatility         │
+├────────────────────┴─────────────────────────────────┤
+│  Domain Types                                        │
+│  Trade, Position, Money, FxRate, Quantity, Price ...  │
+└──────────────────────────────────────────────────────┘
 ```
 
 ## Domain Types (`domain/`)
@@ -63,30 +74,29 @@ Account currency is used for account-level reporting. When aggregating across ac
 
 ## Services (`services/`)
 
-Trait-based data access. Each trait has an in-memory implementation for testing and a production implementation backed by a database or external API.
+Trait-based data access in calce-core. Each trait has an in-memory implementation used for testing and seed data. Production data loading is handled by calce-data's async repos (see Data Layer below).
 
 ### MarketDataService
 
 ```rust
 trait MarketDataService {
     fn get_price(&self, instrument: &InstrumentId, date: NaiveDate) -> CalceResult<Price>;
+    fn get_price_history(&self, instrument: &InstrumentId, from: NaiveDate, to: NaiveDate) -> CalceResult<Vec<(NaiveDate, Price)>>;
     fn get_fx_rate(&self, from: Currency, to: Currency, date: NaiveDate) -> CalceResult<FxRate>;
 }
 ```
 
-Provides market prices and FX rates. Read-only. May be split into `PriceService` + `FxRateService` later if data sources diverge.
+Provides market prices and FX rates. Read-only. `InMemoryMarketDataService` is the default implementation, also used as the bridge between calce-data's async loading and calce-core's sync calculations.
 
 ### UserDataService
 
 ```rust
 trait UserDataService {
-    fn get_accounts(&self, ctx: &SecurityContext, user_id: &UserId) -> CalceResult<Vec<Account>>;
-    fn get_trades_for_user(&self, ctx: &SecurityContext, user_id: &UserId) -> CalceResult<Vec<Trade>>;
-    fn get_trades_for_account(&self, ctx: &SecurityContext, account_id: &AccountId) -> CalceResult<Vec<Trade>>;
+    fn get_trades(&self, ctx: &SecurityContext, user_id: &UserId) -> CalceResult<Vec<Trade>>;
 }
 ```
 
-Loads accounts and trades. Authorization is checked here at the service boundary — if the caller can access the user, they can access all their accounts. No account-level permissions.
+Loads trades for a user. Authorization is checked at the service boundary.
 
 ## Calculations (`calc/`)
 
@@ -105,12 +115,19 @@ pub fn value_positions(
 
 Note: `MarketDataService` is a read-only lookup trait, so passing it doesn't violate purity in any meaningful sense — the function has no side effects.
 
-### Planned calculations
+### Implemented calculations
 
 | Module | Input | Output | Description |
 |--------|-------|--------|-------------|
 | `aggregation` | trades, as_of_date | positions | Sum trades into net positions per instrument |
 | `market_value` | positions, prices, fx | valued positions + total | Current market value in base currency |
+| `value_change` | trades, prices, fx, context | daily/weekly/yearly/YTD changes | Value change across standard periods |
+| `volatility` | instrument, price history | annualized + daily vol | Historical realized volatility from log returns |
+
+### Planned calculations
+
+| Module | Input | Output | Description |
+|--------|-------|--------|-------------|
 | `pnl` | trades, current prices, fx | realized + unrealized P&L | Profit/loss broken down by component |
 | `cost_basis` | trades | cost basis per position | Average cost, supports FIFO/average methods |
 | `risk` | positions, prices, historical data | risk metrics | Exposure, concentration, currency risk |
@@ -128,7 +145,7 @@ The pattern has four levels:
 
 This keeps each function testable in isolation. A future optimization is to cache intermediate results (e.g. a calculation graph that reuses already-computed market values), but the function-call structure doesn't need to change for that — caching wraps the same functions.
 
-## CalcEngine (`engine.rs` — Orchestration)
+## CalcEngine (`calce-core/engine.rs` — Sync Orchestration)
 
 ```rust
 pub struct CalcEngine<'a> {
@@ -139,12 +156,50 @@ pub struct CalcEngine<'a> {
 }
 ```
 
-The engine is the **stateful** entry point. It:
-1. Loads data via services (with authorization)
+The sync engine is calce-core's **stateful** entry point. It:
+1. Loads data via service traits (with authorization)
 2. Delegates to pure `calc/` functions or `reports/` composites
 3. Returns results
 
-It does not contain business logic itself — it wires services to calculations.
+It does not contain business logic itself — it wires services to calculations. Used directly in tests and by calce-python bindings.
+
+## Data Layer (`calce-data/`)
+
+Async data access layer connecting calce-core's sync calculations to real databases.
+
+### AsyncCalcEngine
+
+The async counterpart of CalcEngine. Supports two backends:
+
+- **Postgres** — production mode. Loads data from sqlx repos, builds `InMemoryMarketDataService`/`InMemoryUserDataService` with the loaded data, then passes to calce-core's sync calc functions.
+- **InMemory** — test mode. Wraps existing `InMemory*` services directly and delegates to CalcEngine.
+
+```
+AsyncCalcEngine.market_value_for_user(security_ctx, user_id, ctx)
+  1. Auth check
+  2. Load trades from UserDataRepo (async)
+  3. Aggregate positions (sync, calce-core)
+  4. Batch-load prices + FX rates for those positions (async)
+  5. Build InMemoryMarketDataService with loaded data
+  6. Call value_positions (sync, calce-core)
+```
+
+This pattern keeps calce-core sync and free of database dependencies while allowing efficient batch loading (no N+1 queries).
+
+### Repos
+
+- **MarketDataRepo** — prices and FX rates. Supports single lookups, history ranges, and batch loading for multiple instruments/currency pairs.
+- **UserDataRepo** — users, accounts, and trades. Write operations for local DB; read-only planned for njorda backend.
+
+### Database
+
+Local Postgres (Dockerized, port 5433) with schema managed by sqlx migrations. Tables: `users`, `instruments`, `accounts`, `trades`, `prices`, `fx_rates`.
+
+Start with `invoke db`, stop with `invoke db-stop`.
+
+### Njorda Backend (planned)
+
+Read-only access to njorda's existing Postgres databases (instruments, users, trades). Two separate connection pools for main DB and dataapp DB. Feature-gated behind `njorda` cargo feature.
 
 ## API Layer
 
@@ -155,11 +210,9 @@ Two modes for every calculation. Internally they share the same pure function.
 The caller identifies _what_ to calculate (which user, which account). The engine loads the required data and performs the calculation.
 
 ```
-market_value_for_user(user_id)        → MarketValueResult
-market_value_for_account(account_id)  → MarketValueResult
-portfolio_report_for_user(user_id)    → PortfolioReport
-pnl_for_user(user_id)                → PnlResult
-pnl_for_account(account_id)          → PnlResult
+GET /v1/users/{user_id}/market-value?as_of_date=...&base_currency=...
+GET /v1/users/{user_id}/portfolio?as_of_date=...&base_currency=...
+GET /v1/instruments/{instrument_id}/volatility?as_of_date=...&lookback_days=...
 ```
 
 Use cases: production application serving a logged-in user, scheduled batch jobs.
@@ -179,7 +232,7 @@ Use cases: simulations, what-if analysis, external integrations, testing, sold a
 
 The library exposes both modes as public Rust functions. This keeps the engine embeddable — any Rust application can use it as a dependency.
 
-HTTP/gRPC is a separate concern. A thin service crate wraps the library API with transport, serialization, and authentication. The architecture doc does not prescribe the transport layer.
+HTTP/gRPC is a separate concern. calce-api wraps the library API with transport (axum), serialization, and authentication.
 
 ## Contexts
 
@@ -217,13 +270,6 @@ struct Outcome<T> {
 ```
 
 Every calculation function returns `Outcome<T>` (or `CalceResult<Outcome<T>>` for errors that genuinely prevent any calculation). Warnings carry enough context for the caller to understand what was skipped and why.
-
-## Reports (`reports/`)
-
-Composed views that bundle multiple `calc/` results into a single consumer-facing struct. Reports share intermediate values (e.g. the current-date `MarketValueResult`) to avoid redundant computation. Each report has a pure function (stateless) and a corresponding engine method (stateful).
-
-Current reports:
-- **`portfolio_report`** — market value + value changes. Aggregates trades once, values once, passes the snapshot to value change.
 
 ## Open Design Questions
 
