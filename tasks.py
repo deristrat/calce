@@ -53,6 +53,18 @@ def test(c):
 
 
 @task
+def db(c):
+    """Start the local Postgres database (docker compose)."""
+    c.run("docker compose up -d postgres", pty=True)
+
+
+@task
+def db_stop(c):
+    """Stop the local Postgres database."""
+    c.run("docker compose down", pty=True)
+
+
+@task
 def run_api(c, release=False):
     """Run the API server (seeded with example data). Use -r for release build."""
     flag = " --release" if release else ""
