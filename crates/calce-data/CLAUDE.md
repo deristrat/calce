@@ -12,19 +12,16 @@ trades and market data from different sources.
 | `backend/mod.rs` | `DataBackend` trait — read-only interface used by `DataLoader` |
 | `backend/postgres.rs` | Postgres backend — orchestrates repo queries into `DataBackend` |
 | `backend/in_memory.rs` | In-memory backend for tests |
-| `backend/njorda.rs` | Njorda file-based backend (feature-gated: `njorda`) |
 | `repo/market_data.rs` | Postgres query layer: prices, FX rates (reads + writes) |
 | `repo/user_data.rs` | Postgres query layer: users, accounts, trades (reads + writes) |
 | `loader.rs` | `DataLoader` — wraps a `DataBackend`, adds auth checks and input assembly |
 | `config.rs` | Database connection configuration |
-| `njorda/` | Njorda file parsing and `InMemoryMarketDataService` builder |
 
 ### Layer overview
 
 ```
 DataLoader  →  DataBackend (trait)  →  PostgresBackend  →  repo/ (SQL queries)
                                     →  InMemoryBackend
-                                    →  NjordaBackend
 ```
 
 `repo/` is Postgres-specific and includes write methods (inserts) not exposed

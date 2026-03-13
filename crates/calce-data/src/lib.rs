@@ -5,6 +5,3 @@ pub mod error;
 pub mod loader;
 pub mod permissions;
 pub mod repo;
-
-#[cfg(feature = "njorda")]
-pub mod njorda;

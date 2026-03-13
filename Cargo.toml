@@ -1,4 +1,4 @@
 [workspace]
-members = ["crates/calce-core", "crates/calce-data", "crates/calce-python", "crates/calce-api"]
-default-members = ["crates/calce-core", "crates/calce-data", "crates/calce-api"]
+members = ["crates/calce-core", "crates/calce-data", "crates/calce-integrations", "crates/calce-python", "crates/calce-api"]
+default-members = ["crates/calce-core", "crates/calce-data", "crates/calce-integrations", "crates/calce-api"]
 resolver = "3"

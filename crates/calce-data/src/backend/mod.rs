@@ -1,9 +1,6 @@
 mod in_memory;
 mod postgres;
 
-#[cfg(feature = "njorda")]
-mod njorda;
-
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -19,9 +16,6 @@ use crate::error::DataResult;
 
 pub use in_memory::InMemoryBackend;
 pub use postgres::PostgresBackend;
-
-#[cfg(feature = "njorda")]
-pub use njorda::NjordaBackend;
 
 pub use crate::loader::{DataStats, DateRange, InstrumentSummary, UserSummary};
 

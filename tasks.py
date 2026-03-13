@@ -93,7 +93,7 @@ def njorda_fetch(c, from_date="2023-01-01", to_date="2026-03-06", fresh=False):
     """
     fresh_flag = " --fresh" if fresh else ""
     c.run(
-        f"cargo run -p calce-data --features njorda --bin njorda-fetch -- "
+        f"cargo run -p calce-integrations --features njorda --bin njorda-fetch -- "
         f"--from {from_date} --to {to_date}{fresh_flag}",
         pty=True,
     )

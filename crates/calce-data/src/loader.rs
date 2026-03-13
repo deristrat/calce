@@ -95,11 +95,21 @@ impl DataLoader {
         })
     }
 
+    /// List users visible to the caller.
+    ///
+    /// Admins see all users. Regular users see only themselves.
+    ///
     /// # Errors
     ///
     /// Propagates database errors.
-    pub async fn list_users(&self) -> DataResult<Vec<UserSummary>> {
-        self.backend.list_users().await
+    pub async fn list_users(&self, ctx: &SecurityContext) -> DataResult<Vec<UserSummary>> {
+        let users = self.backend.list_users().await?;
+        if ctx.is_admin() {
+            Ok(users)
+        } else {
+            let id = ctx.user_id.as_str();
+            Ok(users.into_iter().filter(|u| u.id == id).collect())
+        }
     }
 
     /// # Errors
@@ -335,6 +345,27 @@ mod tests {
         let inputs = loader.load_calc_inputs(&admin_ctx(), &spec).await.unwrap();
         // Alice has 1 trade — duplicates in subjects must not double-count
         assert_eq!(inputs.trades.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn list_users_admin_sees_all() {
+        let loader = test_loader();
+        let users = loader.list_users(&admin_ctx()).await.unwrap();
+        assert_eq!(users.len(), 1);
+        assert_eq!(users[0].id, "alice");
+    }
+
+    #[tokio::test]
+    async fn list_users_user_sees_only_self() {
+        let loader = test_loader();
+        // alice sees herself
+        let users = loader.list_users(&user_ctx("alice")).await.unwrap();
+        assert_eq!(users.len(), 1);
+        assert_eq!(users[0].id, "alice");
+
+        // bob sees nothing (no user record for bob)
+        let users = loader.list_users(&user_ctx("bob")).await.unwrap();
+        assert!(users.is_empty());
     }
 
     #[test]

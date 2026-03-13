@@ -1,0 +1,29 @@
+[package]
+name = "calce-integrations"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+njorda = ["dep:rkyv", "dep:lz4_flex", "dep:bincode", "dep:clap", "dep:tracing-subscriber", "dep:sqlx"]
+
+[[bin]]
+name = "njorda-fetch"
+path = "src/njorda/bin.rs"
+required-features = ["njorda"]
+
+[dependencies]
+calce-core = { path = "../calce-core", features = ["serde"] }
+calce-data = { path = "../calce-data" }
+async-trait = "0.1"
+chrono = { version = "0.4", default-features = false, features = ["std", "serde"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+tokio = { version = "1", features = ["rt", "macros"] }
+tracing = "0.1"
+rkyv = { version = "0.8", features = ["bytecheck"], optional = true }
+lz4_flex = { version = "0.11", optional = true }
+bincode = { version = "1", optional = true }
+clap = { version = "4", features = ["derive"], optional = true }
+tracing-subscriber = { version = "0.3", optional = true }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono"], optional = true }

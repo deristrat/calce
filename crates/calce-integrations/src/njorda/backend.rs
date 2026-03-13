@@ -10,9 +10,8 @@ use calce_core::domain::trade::Trade;
 use calce_core::domain::user::UserId;
 use calce_core::services::market_data::{InMemoryMarketDataService, MarketDataService};
 
-use crate::error::{DataError, DataResult};
-
-use super::{DataBackend, DataStats, DateRange, InstrumentSummary, UserSummary};
+use calce_data::backend::{DataBackend, DataStats, DateRange, InstrumentSummary, UserSummary};
+use calce_data::error::{DataError, DataResult};
 
 /// Read-only market data backend backed by a pre-loaded Njorda cache.
 pub struct NjordaBackend {

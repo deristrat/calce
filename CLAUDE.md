@@ -10,7 +10,9 @@ crates/
 ├── calce-core/             — core Rust library (no DB/async deps)
 │   ├── src/
 │   └── tests/
-├── calce-data/             — real DB implementations of service traits
+├── calce-data/             — Calce's own Postgres-backed storage + DataBackend trait
+│   └── src/
+├── calce-integrations/     — external data source integrations (njorda, etc.)
 │   └── src/
 ├── calce-api/              — HTTP server, wires data + core
 │   └── src/
@@ -19,8 +21,9 @@ crates/
     └── tests/              — pytest tests
 ```
 
-`calce-core` defines service traits; 
+`calce-core` defines service traits;
 `calce-data` implements them against real databases.
+`calce-integrations` provides external data source integrations (feature-gated per provider).
 `calce-core` has no DB or async dependencies — this keeps it fast to compile and easy to test.
 
 ## Documentation

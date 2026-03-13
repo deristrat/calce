@@ -1,7 +1,7 @@
 use chrono::{NaiveDate, Utc};
 use clap::Parser;
 
-use calce_data::njorda::{self, cache};
+use calce_integrations::njorda::{self, cache};
 
 fn today() -> NaiveDate {
     Utc::now().date_naive()

@@ -321,6 +321,7 @@ dependencies = [
  "axum",
  "calce-core",
  "calce-data",
+ "calce-integrations",
  "chrono",
  "http-body-util",
  "serde",
@@ -349,8 +350,23 @@ name = "calce-data"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "calce-core",
+ "chrono",
+ "serde",
+ "sqlx",
+ "thiserror",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
+name = "calce-integrations"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
  "bincode",
  "calce-core",
+ "calce-data",
  "chrono",
  "clap",
  "lz4_flex",

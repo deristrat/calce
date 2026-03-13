@@ -31,4 +31,12 @@ impl InMemoryUserDataService {
     pub fn user_count(&self) -> usize {
         self.trades.len()
     }
+
+    #[must_use]
+    pub fn user_ids(&self) -> Vec<String> {
+        self.trades
+            .keys()
+            .map(|id| id.as_str().to_owned())
+            .collect()
+    }
 }

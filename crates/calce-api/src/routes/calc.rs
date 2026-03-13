@@ -141,17 +141,24 @@ async fn volatility(
 
 // ── Data exploration (no auth required — developer tool) ──────────────
 
-async fn data_stats(State(state): State<AppState>) -> Result<Json<DataStats>, ApiError> {
+async fn data_stats(
+    Auth(_ctx): Auth,
+    State(state): State<AppState>,
+) -> Result<Json<DataStats>, ApiError> {
     let stats = state.loader.data_stats().await?;
     Ok(Json(stats))
 }
 
-async fn data_users(State(state): State<AppState>) -> Result<Json<Vec<UserSummary>>, ApiError> {
-    let users = state.loader.list_users().await?;
+async fn data_users(
+    Auth(ctx): Auth,
+    State(state): State<AppState>,
+) -> Result<Json<Vec<UserSummary>>, ApiError> {
+    let users = state.loader.list_users(&ctx).await?;
     Ok(Json(users))
 }
 
 async fn data_instruments(
+    Auth(_ctx): Auth,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<InstrumentSummary>>, ApiError> {
     let instruments = state.loader.list_instruments().await?;
@@ -171,6 +178,7 @@ struct PricePoint {
 }
 
 async fn instrument_prices(
+    Auth(_ctx): Auth,
     State(state): State<AppState>,
     Path(instrument_id): Path<String>,
     Query(params): Query<PriceHistoryParams>,

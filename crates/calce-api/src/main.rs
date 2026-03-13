@@ -56,8 +56,7 @@ async fn create_postgres_loader() -> (DataLoader, PgPool) {
 fn create_njorda_cache_loader() -> DataLoader {
     use std::time::Instant;
 
-    use calce_data::backend::NjordaBackend;
-    use calce_data::njorda::{self, cache};
+    use calce_integrations::njorda::{self, NjordaBackend, cache};
 
     let cache_path = cache::cache_path();
     let service_path = cache::service_cache_path();
@@ -321,5 +320,49 @@ mod tests {
         .await;
 
         assert_eq!(status, StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn data_stats_requires_auth() {
+        let (status, _) = get("/v1/data/stats", &[]).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+        let (status, body) = get("/v1/data/stats", &auth_headers()).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(body["instrument_count"].is_number());
+    }
+
+    #[tokio::test]
+    async fn data_instruments_requires_auth() {
+        let (status, _) = get("/v1/data/instruments", &[]).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+        let (status, body) = get("/v1/data/instruments", &auth_headers()).await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(body.as_array().is_some());
+    }
+
+    #[tokio::test]
+    async fn data_users_requires_auth() {
+        let (status, _) = get("/v1/data/users", &[]).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn instrument_prices_requires_auth() {
+        let (status, _) = get(
+            "/v1/data/instruments/AAPL/prices?from=2025-01-01&to=2025-03-14",
+            &[],
+        )
+        .await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+        let (status, body) = get(
+            "/v1/data/instruments/AAPL/prices?from=2025-01-01&to=2025-03-14",
+            &auth_headers(),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(body.as_array().is_some());
     }
 }

@@ -48,7 +48,17 @@ impl DataBackend for InMemoryBackend {
     }
 
     async fn list_users(&self) -> DataResult<Vec<UserSummary>> {
-        Ok(vec![])
+        // TODO this filter shoudl be pushed down
+        Ok(self
+            .user_data
+            .user_ids()
+            .into_iter()
+            .map(|id| UserSummary {
+                id,
+                email: None,
+                trade_count: 0,
+            })
+            .collect())
     }
 
     async fn list_instruments(&self) -> DataResult<Vec<InstrumentSummary>> {
@@ -157,10 +167,11 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn list_users_returns_empty() {
+    async fn list_users_returns_known_users() {
         let backend = test_backend();
         let users = backend.list_users().await.unwrap();
-        assert!(users.is_empty());
+        assert_eq!(users.len(), 1);
+        assert_eq!(users[0].id, "alice");
     }
 
     #[tokio::test]
