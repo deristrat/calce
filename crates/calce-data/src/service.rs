@@ -150,7 +150,7 @@ impl DataService {
     ///
     /// Returns `Unauthorized` if the security context lacks access to any subject.
     /// Returns `NoTradesFound` if a subject has no trades.
-    pub async fn load_calc_inputs(
+    pub fn load_calc_inputs(
         &self,
         ctx: &SecurityContext,
         spec: &CalcInputSpec,
@@ -193,7 +193,7 @@ impl DataService {
         DataStats {
             user_count: i64::try_from(self.users.len()).unwrap_or(0),
             instrument_count: i64::try_from(self.instruments.len()).unwrap_or(0),
-            trade_count: 0,
+            trade_count: i64::try_from(self.user_data.trade_count()).unwrap_or(0),
             price_count: i64::try_from(self.market_data.price_count()).unwrap_or(0),
             fx_rate_count: i64::try_from(self.market_data.fx_rate_count()).unwrap_or(0),
         }
@@ -263,21 +263,6 @@ mod tests {
     use calce_core::domain::quantity::Quantity;
     use calce_core::domain::trade::Trade;
 
-    fn unique_instruments(trades: &[Trade]) -> Vec<InstrumentId> {
-        let mut instruments: Vec<InstrumentId> =
-            trades.iter().map(|t| t.instrument_id.clone()).collect();
-        instruments.sort_by(|a, b| a.as_str().cmp(b.as_str()));
-        instruments.dedup_by(|a, b| a.as_str() == b.as_str());
-        instruments
-    }
-
-    fn unique_currencies(trades: &[Trade]) -> Vec<Currency> {
-        let mut currencies: Vec<Currency> = trades.iter().map(|t| t.currency).collect();
-        currencies.sort_by(|a, b| a.as_str().cmp(b.as_str()));
-        currencies.dedup();
-        currencies
-    }
-
     fn date(y: i32, m: u32, d: u32) -> NaiveDate {
         NaiveDate::from_ymd_opt(y, m, d).expect("valid test date")
     }
@@ -331,33 +316,28 @@ mod tests {
         }
     }
 
-    #[tokio::test]
-    async fn load_calc_inputs_enforces_access_check() {
+    #[test]
+    fn load_calc_inputs_enforces_access_check() {
         let svc = test_service();
         let err = svc
             .load_calc_inputs(&user_ctx("bob"), &alice_spec())
-            .await
             .unwrap_err();
         assert!(matches!(err, DataError::Unauthorized { .. }));
     }
 
-    #[tokio::test]
-    async fn load_calc_inputs_allows_self_access() {
+    #[test]
+    fn load_calc_inputs_allows_self_access() {
         let svc = test_service();
         let inputs = svc
             .load_calc_inputs(&user_ctx("alice"), &alice_spec())
-            .await
             .unwrap();
         assert_eq!(inputs.trades.len(), 1);
     }
 
-    #[tokio::test]
-    async fn load_calc_inputs_allows_admin_access() {
+    #[test]
+    fn load_calc_inputs_allows_admin_access() {
         let svc = test_service();
-        let inputs = svc
-            .load_calc_inputs(&admin_ctx(), &alice_spec())
-            .await
-            .unwrap();
+        let inputs = svc.load_calc_inputs(&admin_ctx(), &alice_spec()).unwrap();
         assert_eq!(inputs.trades.len(), 1);
     }
 
@@ -370,8 +350,8 @@ mod tests {
         assert_eq!(price.value(), 150.0);
     }
 
-    #[tokio::test]
-    async fn duplicate_subjects_are_deduplicated() {
+    #[test]
+    fn duplicate_subjects_are_deduplicated() {
         let svc = test_service();
         let spec = CalcInputSpec {
             subjects: vec![UserId::new("alice"), UserId::new("alice")],
@@ -381,7 +361,7 @@ mod tests {
                 to: date(2025, 1, 31),
             },
         };
-        let inputs = svc.load_calc_inputs(&admin_ctx(), &spec).await.unwrap();
+        let inputs = svc.load_calc_inputs(&admin_ctx(), &spec).unwrap();
         assert_eq!(inputs.trades.len(), 1);
     }
 
@@ -402,86 +382,5 @@ mod tests {
 
         let users = svc.list_users(&user_ctx("bob"));
         assert!(users.is_empty());
-    }
-
-    #[test]
-    fn unique_instruments_deduplicates_and_sorts() {
-        let usd = Currency::new("USD");
-        let alice = UserId::new("alice");
-        let acct = AccountId::new("a");
-        let d = date(2025, 1, 1);
-        let trades = vec![
-            Trade {
-                user_id: alice.clone(),
-                account_id: acct.clone(),
-                instrument_id: InstrumentId::new("MSFT"),
-                quantity: Quantity::new(1.0),
-                price: Price::new(1.0),
-                currency: usd,
-                date: d,
-            },
-            Trade {
-                user_id: alice.clone(),
-                account_id: acct.clone(),
-                instrument_id: InstrumentId::new("AAPL"),
-                quantity: Quantity::new(1.0),
-                price: Price::new(1.0),
-                currency: usd,
-                date: d,
-            },
-            Trade {
-                user_id: alice,
-                account_id: acct,
-                instrument_id: InstrumentId::new("MSFT"),
-                quantity: Quantity::new(1.0),
-                price: Price::new(1.0),
-                currency: usd,
-                date: d,
-            },
-        ];
-        let result = unique_instruments(&trades);
-        assert_eq!(result.len(), 2);
-        assert_eq!(result[0].as_str(), "AAPL");
-        assert_eq!(result[1].as_str(), "MSFT");
-    }
-
-    #[test]
-    fn unique_currencies_deduplicates() {
-        let usd = Currency::new("USD");
-        let eur = Currency::new("EUR");
-        let alice = UserId::new("alice");
-        let acct = AccountId::new("a");
-        let d = date(2025, 1, 1);
-        let trades = vec![
-            Trade {
-                user_id: alice.clone(),
-                account_id: acct.clone(),
-                instrument_id: InstrumentId::new("A"),
-                quantity: Quantity::new(1.0),
-                price: Price::new(1.0),
-                currency: usd,
-                date: d,
-            },
-            Trade {
-                user_id: alice.clone(),
-                account_id: acct.clone(),
-                instrument_id: InstrumentId::new("B"),
-                quantity: Quantity::new(1.0),
-                price: Price::new(1.0),
-                currency: eur,
-                date: d,
-            },
-            Trade {
-                user_id: alice,
-                account_id: acct,
-                instrument_id: InstrumentId::new("C"),
-                quantity: Quantity::new(1.0),
-                price: Price::new(1.0),
-                currency: usd,
-                date: d,
-            },
-        ];
-        let result = unique_currencies(&trades);
-        assert_eq!(result.len(), 2);
     }
 }

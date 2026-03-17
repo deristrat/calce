@@ -74,7 +74,7 @@ async fn market_value(
             to: params.as_of_date,
         },
     };
-    let inputs = state.data.load_calc_inputs(&security_ctx, &spec).await?;
+    let inputs = state.data.load_calc_inputs(&security_ctx, &spec)?;
 
     let positions = aggregation::aggregate_positions(&inputs.trades, ctx.as_of_date)?;
     let outcome = market_value::value_positions(&positions, &ctx, &*inputs.market_data)?;
@@ -101,7 +101,7 @@ async fn portfolio_report(
             to: params.as_of_date,
         },
     };
-    let inputs = state.data.load_calc_inputs(&security_ctx, &spec).await?;
+    let inputs = state.data.load_calc_inputs(&security_ctx, &spec)?;
 
     let outcome = calce_core::reports::portfolio::portfolio_report(
         &inputs.trades,

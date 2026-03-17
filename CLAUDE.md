@@ -8,23 +8,15 @@ Financial calculation engine for portfolio tracking.
 Cargo.toml                  — workspace root
 crates/
 ├── calce-core/             — core Rust library (no DB/async deps)
-│   ├── src/
-│   └── tests/
-├── calce-data/             — Calce's own Postgres-backed storage + DataBackend trait
-│   └── src/
+├── calce-data/             — Postgres-backed storage + DataService
 ├── calce-integrations/     — external data source integrations (njorda, etc.)
-│   └── src/
 ├── calce-api/              — HTTP server, wires data + core
-│   └── src/
 └── calce-python/           — PyO3 bindings (depends on core only)
-    ├── src/                — Rust binding code
-    └── tests/              — pytest tests
+docs/                       — reference, design and architecture documentation
+tools/                      — developer and testing tools, e.g. benchmarking
+working_docs/               — ephemeral working notes, design exploration, task tracking
 ```
 
-`calce-core` defines service traits;
-`calce-data` implements them against real databases.
-`calce-integrations` provides external data source integrations (feature-gated per provider).
-`calce-core` has no DB or async dependencies — this keeps it fast to compile and easy to test.
 
 ## Documentation
 
@@ -37,7 +29,7 @@ crates/
 
 These are **permanent documentation** — keep them accurate but concise.
 
-### Working Notes (`docs/working-notes/`)
+### Working Notes (`working_docs/`)
 
 Ephemeral tracking: implementation status, planned features, known issues, task progress. Not permanent docs — expected to go stale and get cleaned up. Use this for longer-running tasks and design exploration.
 
@@ -75,17 +67,20 @@ Only comment when the comment adds value that the code doesn't already convey.
 **Rule of thumb:** if the doc comment is just the function/field/type name rephrased as a sentence, delete it.
 
 ## Development
-
 ```sh
 cargo build
 cargo test
 cargo clippy --workspace -- -D warnings
 ```
 
-**`invoke check`** runs formatting, clippy, and tests in one go. You must:
+We use Invoke for commands. Everyting a devleoper needs to do on a regular basis should be available via this.
+
+**`invoke check`** runs formatting, clippy, :
 - Run it regularly during development
 - Ensure it passes before considering any feature complete
-- **Always** run it before any commit — never commit with failing checks
+
+**`invoke test`** runs complete tests:
+- **Always** run it before any commit
 
 ### Python bindings
 

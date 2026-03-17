@@ -33,6 +33,11 @@ impl InMemoryUserDataService {
     }
 
     #[must_use]
+    pub fn trade_count(&self) -> usize {
+        self.trades.values().map(Vec::len).sum()
+    }
+
+    #[must_use]
     pub fn user_ids(&self) -> Vec<String> {
         self.trades
             .keys()
