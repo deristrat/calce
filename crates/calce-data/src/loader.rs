@@ -29,10 +29,11 @@ pub async fn load_from_postgres(pool: &PgPool) -> DataResult<(MarketDataStore, U
 
     let users: Vec<UserSummary> = users_raw
         .into_iter()
-        .map(|(id, email, trade_count)| UserSummary {
-            id,
-            email,
-            trade_count,
+        .map(|row| UserSummary {
+            id: row.external_id,
+            email: row.email,
+            organization_id: row.organization_id,
+            trade_count: row.trade_count.unwrap_or(0),
         })
         .collect();
 

@@ -137,9 +137,9 @@ Full wipe-and-reload each run. This is a dev tool — idempotent fresh import is
 ## Progress
 
 - [x] Plan reviewed and approved
-- [ ] Alembic migration (organizations table + users.organization_id)
-- [ ] Update SQLAlchemy models
-- [ ] Import script (`tools/njorda_import.py`)
-- [ ] Invoke task wired up
-- [ ] Update Rust data layer (Organization struct, queries)
-- [ ] Tested with real data
+- [x] Alembic migration (organizations table + users.organization_id)
+- [x] Update SQLAlchemy models
+- [x] Import script (`tools/njorda_import.py`)
+- [x] Invoke task wired up
+- [x] Update Rust data layer (Organization struct, queries, API routes, seed tool)
+- [x] Tested with real data (14 orgs, 1113 users, 25844 trades, 1M+ prices)

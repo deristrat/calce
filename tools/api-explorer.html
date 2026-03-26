@@ -130,6 +130,7 @@
     <div class="nav-item active" onclick="navigate('dashboard')">Dashboard</div>
     <div class="nav-item" onclick="navigate('users')">Users</div>
     <div class="nav-item" onclick="navigate('instruments')">Instruments</div>
+    <div class="nav-item" onclick="navigate('organizations')">Organizations</div>
     <div class="nav-section">API</div>
     <div class="nav-item" onclick="navigate('market-value')">Market Value</div>
     <div class="nav-item" onclick="navigate('portfolio')">Portfolio</div>
@@ -166,7 +167,16 @@
     <h2>Users</h2>
     <p>Browse users and their trade activity</p>
   </div>
-  <div class="search-bar"><input type="text" id="userSearch" placeholder="Search by ID or email..." oninput="debounce(loadUsers, 300)()"></div>
+  <div class="controls" style="margin-bottom:8px">
+    <div class="field"><label>Organization</label>
+      <select id="userOrgFilter" onchange="usersState.offset=0; loadUsers()">
+        <option value="">All</option>
+      </select>
+    </div>
+    <div class="field" style="flex:1"><label>Search</label>
+      <input type="text" id="userSearch" placeholder="Search by ID or email..." oninput="debounce(loadUsers, 300)()">
+    </div>
+  </div>
   <div class="table-wrap">
     <div class="table-scroll" id="usersTableWrap"><div class="loading"><span class="spinner"></span></div></div>
   </div>
@@ -209,6 +219,29 @@
     <span class="subtitle" id="instrDetailSubtitle"></span>
   </div>
   <div id="instrDetailContent"></div>
+</div>
+
+<!-- ═══ Organizations ═══ -->
+<div class="page" id="page-organizations">
+  <div class="page-header">
+    <h2>Organizations</h2>
+    <p>Browse organizations and their members</p>
+  </div>
+  <div class="table-wrap">
+    <div class="table-scroll" id="orgsTableWrap"><div class="loading"><span class="spinner"></span></div></div>
+  </div>
+</div>
+
+<!-- ═══ Organization Detail ═══ -->
+<div class="page" id="page-organization-detail">
+  <div class="detail-header">
+    <button class="ghost" onclick="navigate('organizations')">&larr; Organizations</button>
+    <h2 id="orgDetailTitle">Organization</h2>
+  </div>
+  <div class="table-wrap">
+    <div class="table-scroll" id="orgDetailUsers"><div class="loading"><span class="spinner"></span></div></div>
+  </div>
+  <div class="pagination" id="orgUsersPagination"></div>
 </div>
 
 <!-- ═══ Market Value ═══ -->
@@ -338,8 +371,10 @@ function navigate(page, data) {
   if (page === 'dashboard') loadDashboard();
   else if (page === 'users') loadUsers();
   else if (page === 'instruments') loadInstruments();
+  else if (page === 'organizations') loadOrganizations();
   else if (page === 'user-detail') loadUserDetail(data);
   else if (page === 'instrument-detail') loadInstrumentDetail(data);
+  else if (page === 'organization-detail') loadOrganizationDetail(data);
 }
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -409,6 +444,7 @@ async function loadDashboard() {
       const s = r.data;
       document.getElementById('statsGrid').innerHTML = [
         { value: fmtInt(s.user_count), label: 'Users' },
+        { value: fmtInt(s.organization_count), label: 'Organizations' },
         { value: fmtInt(s.instrument_count), label: 'Instruments' },
         { value: fmtInt(s.trade_count), label: 'Trades' },
         { value: fmtInt(s.price_count), label: 'Prices' },
@@ -461,8 +497,11 @@ function searchInstruments(q) {
 let usersState = { offset: 0, limit: 50 };
 
 async function loadUsers() {
+  populateOrgFilter();
   const search = document.getElementById('userSearch')?.value || '';
-  const params = `?offset=${usersState.offset}&limit=${usersState.limit}&search=${encodeURIComponent(search)}`;
+  const orgId = document.getElementById('userOrgFilter')?.value || '';
+  let params = `?offset=${usersState.offset}&limit=${usersState.limit}&search=${encodeURIComponent(search)}`;
+  if (orgId) params += `&organization_id=${encodeURIComponent(orgId)}`;
   const wrap = document.getElementById('usersTableWrap');
   wrap.innerHTML = '<div class="loading"><span class="spinner"></span></div>';
 
@@ -473,10 +512,13 @@ async function loadUsers() {
     const { items, total, offset, limit } = r.data;
     if (items.length === 0) { wrap.innerHTML = '<p class="loading">No users found</p>'; renderPagination('usersPagination', 0, 0, 0, loadUsers, usersState); return; }
 
-    let html = '<table><tr><th>ID</th><th>Email</th><th class="num">Trades</th></tr>';
+    let html = '<table><tr><th>ID</th><th>Email</th><th>Org</th><th class="num">Trades</th></tr>';
     for (const u of items) {
+      const orgCell = u.organization_id
+        ? `<span class="badge badge-type" style="cursor:pointer" onclick="event.stopPropagation(); navigate('organization-detail', '${u.organization_id}')">${u.organization_id}</span>`
+        : '-';
       html += `<tr class="clickable" onclick="navigate('user-detail', '${u.id}')">
-        <td>${u.id}</td><td>${u.email || '-'}</td><td class="num">${fmtInt(u.trade_count)}</td></tr>`;
+        <td>${u.id}</td><td>${u.email || '-'}</td><td>${orgCell}</td><td class="num">${fmtInt(u.trade_count)}</td></tr>`;
     }
     html += '</table>';
     wrap.innerHTML = html;
@@ -484,6 +526,110 @@ async function loadUsers() {
   } catch {
     wrap.innerHTML = '<p class="loading">Cannot reach server</p>';
   }
+}
+
+// ── Org filter for users page ────────────────────────────────────────
+
+let orgFilterCache = null;
+
+async function populateOrgFilter() {
+  const sel = document.getElementById('userOrgFilter');
+  if (!sel || orgFilterCache) return;
+  try {
+    const r = await apiFetch('/v1/organizations');
+    if (r.ok) {
+      orgFilterCache = r.data;
+      for (const org of r.data) {
+        const opt = document.createElement('option');
+        opt.value = org.id;
+        opt.textContent = org.name || org.id;
+        sel.appendChild(opt);
+      }
+    }
+  } catch {}
+}
+
+// ── Organizations list ──────────────────────────────────────────────
+
+async function loadOrganizations() {
+  const wrap = document.getElementById('orgsTableWrap');
+  wrap.innerHTML = '<div class="loading"><span class="spinner"></span></div>';
+
+  try {
+    const [orgsRes, usersRes] = await Promise.all([
+      apiFetch('/v1/organizations'),
+      apiFetch('/v1/data/users?limit=5000'),
+    ]);
+    if (!orgsRes.ok) { wrap.innerHTML = '<p class="loading">Failed to load organizations</p>'; return; }
+
+    const orgs = orgsRes.data;
+    // Count users per org
+    const userCounts = {};
+    if (usersRes.ok) {
+      for (const u of usersRes.data.items) {
+        if (u.organization_id) userCounts[u.organization_id] = (userCounts[u.organization_id] || 0) + 1;
+      }
+    }
+
+    if (orgs.length === 0) { wrap.innerHTML = '<p class="loading">No organizations found</p>'; return; }
+
+    let html = '<table><tr><th>ID</th><th>Name</th><th class="num">Users</th><th>Created</th></tr>';
+    for (const o of orgs) {
+      const count = userCounts[o.id] || 0;
+      const created = o.created_at ? o.created_at.slice(0, 10) : '-';
+      html += `<tr class="clickable" onclick="navigate('organization-detail', '${o.id}')">
+        <td><strong>${o.id}</strong></td><td>${o.name || '-'}</td><td class="num">${fmtInt(count)}</td><td>${created}</td></tr>`;
+    }
+    html += '</table>';
+    wrap.innerHTML = html;
+  } catch {
+    wrap.innerHTML = '<p class="loading">Cannot reach server</p>';
+  }
+}
+
+// ── Organization detail ─────────────────────────────────────────────
+
+let orgDetailState = { offset: 0, limit: 50, orgId: null };
+
+async function loadOrganizationDetail(orgId) {
+  if (!orgId) return;
+  orgDetailState.orgId = orgId;
+  document.getElementById('orgDetailTitle').textContent = orgId;
+  const wrap = document.getElementById('orgDetailUsers');
+  wrap.innerHTML = '<div class="loading"><span class="spinner"></span></div>';
+
+  // Fetch org name
+  try {
+    const r = await apiFetch(`/v1/organizations/${orgId}`);
+    if (r.ok && r.data.name) {
+      document.getElementById('orgDetailTitle').textContent = `${r.data.name} (${orgId})`;
+    }
+  } catch {}
+
+  // Fetch users in this org
+  const params = `?offset=${orgDetailState.offset}&limit=${orgDetailState.limit}&organization_id=${encodeURIComponent(orgId)}`;
+  try {
+    const r = await apiFetch('/v1/data/users' + params);
+    if (!r.ok) { wrap.innerHTML = '<p class="loading">Failed to load</p>'; return; }
+
+    const { items, total, offset, limit } = r.data;
+    if (items.length === 0) { wrap.innerHTML = '<p class="loading">No users in this organization</p>'; renderPagination('orgUsersPagination', 0, 0, 0, reloadOrgDetail, orgDetailState); return; }
+
+    let html = '<table><tr><th>ID</th><th>Email</th><th class="num">Trades</th></tr>';
+    for (const u of items) {
+      html += `<tr class="clickable" onclick="navigate('user-detail', '${u.id}')">
+        <td>${u.id}</td><td>${u.email || '-'}</td><td class="num">${fmtInt(u.trade_count)}</td></tr>`;
+    }
+    html += '</table>';
+    wrap.innerHTML = html;
+    renderPagination('orgUsersPagination', total, offset, limit, reloadOrgDetail, orgDetailState);
+  } catch {
+    wrap.innerHTML = '<p class="loading">Cannot reach server</p>';
+  }
+}
+
+function reloadOrgDetail() {
+  if (orgDetailState.orgId) loadOrganizationDetail(orgDetailState.orgId);
 }
 
 // ── User detail ─────────────────────────────────────────────────────
@@ -748,6 +894,7 @@ function renderPagination(elId, total, offset, limit, loadFn, stateObj) {
 function paginateTo(offset, limit, fnName) {
   if (fnName === 'loadUsers') { usersState.offset = Math.max(0, offset); loadUsers(); }
   else if (fnName === 'loadInstruments') { instrState.offset = Math.max(0, offset); loadInstruments(); }
+  else if (fnName === 'reloadOrgDetail') { orgDetailState.offset = Math.max(0, offset); reloadOrgDetail(); }
 }
 
 // ── API Explorer: Market Value ──────────────────────────────────────

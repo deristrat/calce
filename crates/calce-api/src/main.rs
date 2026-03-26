@@ -25,6 +25,7 @@ fn build_router(state: AppState) -> Router {
         .route("/", get(routes::explorer))
         .merge(routes::calc_routes())
         .merge(routes::user_routes())
+        .merge(routes::organization_routes())
         .layer(CorsLayer::very_permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state)

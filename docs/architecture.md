@@ -19,7 +19,9 @@ calce-data    (async — data access, authorization, input assembly)
     ↑
 calce-api     (async — axum HTTP handlers, extracts identity, routes to data+calc)
 
-calce-python  (PyO3 bindings, depends on calce-core only — caller provides all data)
+calce-python  (PyO3 bindings, depends on calce-core + calce-data)
+    ↑
+calce-ai      (Python — Anthropic Claude chat with tools backed by calce-python)
 ```
 
 ## The Sync/Async Bridge
@@ -43,7 +45,9 @@ Data is loaded async in bulk, packed into in-memory structs, then handed to pure
 
 **Stateful** — caller identifies _what_ to calculate (which user). `DataService` in calce-data loads data and packs it into in-memory services, then the API handler calls pure calc functions. Used by the HTTP API.
 
-**Caller-provided** — caller constructs all input data (trades, market data) and passes it directly. No database access, no auth. The PyO3 `CalcEngine` still indexes trades by `user_id` into caller-provided `UserData`, but all data originates from the caller. Used for simulations, what-if analysis, testing, and as an embeddable library (PyO3).
+**Caller-provided** — caller constructs all input data (trades, market data) and passes it directly. No database access, no auth. Used for simulations, what-if analysis, and testing.
+
+The PyO3 bindings support both modes: `CalcEngine` with manual data construction (caller-provided), or `DataService` which connects to Postgres and bulk-loads data at startup (stateful).
 
 Both modes call the same pure `calc/` functions underneath.
 

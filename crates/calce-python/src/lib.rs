@@ -1,5 +1,7 @@
 use pyo3::prelude::*;
 
+mod data_service;
+mod data_types;
 mod domain;
 mod engine;
 mod errors;
@@ -19,6 +21,13 @@ fn calce(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // Engine
     m.add_class::<engine::CalcEngine>()?;
+
+    // Data service
+    m.add_class::<data_service::DataService>()?;
+    m.add_class::<data_types::PyUserInfo>()?;
+    m.add_class::<data_types::PyInstrumentInfo>()?;
+    m.add_class::<data_types::PyPricePoint>()?;
+    m.add_class::<data_types::PyDataStats>()?;
 
     // Result types
     m.add_class::<results::ValuedPosition>()?;

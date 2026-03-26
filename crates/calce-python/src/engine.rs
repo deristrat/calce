@@ -22,6 +22,25 @@ pub struct CalcEngine {
     user_data: Py<UserData>,
 }
 
+impl CalcEngine {
+    pub(crate) fn create(
+        py: Python<'_>,
+        base_currency: &Currency,
+        as_of_date: NaiveDate,
+        user_id: &str,
+        market_data: Py<MarketData>,
+        user_data: Py<UserData>,
+    ) -> PyResult<Self> {
+        market_data.borrow_mut(py).inner.freeze();
+        Ok(CalcEngine {
+            ctx: CalculationContext::new(base_currency.inner, as_of_date),
+            user_id: UserId::new(user_id),
+            market_data,
+            user_data,
+        })
+    }
+}
+
 #[pymethods]
 impl CalcEngine {
     #[new]
@@ -34,14 +53,7 @@ impl CalcEngine {
         market_data: Py<MarketData>,
         user_data: Py<UserData>,
     ) -> PyResult<Self> {
-        let uid = UserId::new(user_id);
-        market_data.borrow_mut(py).inner.freeze();
-        Ok(CalcEngine {
-            ctx: CalculationContext::new(base_currency.inner, as_of_date),
-            user_id: uid,
-            market_data,
-            user_data,
-        })
+        Self::create(py, base_currency, as_of_date, user_id, market_data, user_data)
     }
 
     fn market_value(&self, py: Python<'_>) -> PyResult<MarketValueResult> {

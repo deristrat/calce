@@ -13,11 +13,20 @@ use calce_core::domain::user::UserId;
 use crate::error::{DataError, DataResult};
 
 #[derive(Debug, sqlx::FromRow, Serialize)]
+pub struct Organization {
+    #[serde(rename = "id")]
+    pub external_id: String,
+    pub name: Option<String>,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, sqlx::FromRow, Serialize)]
 pub struct User {
     #[serde(rename = "id")]
     pub external_id: String,
     pub email: Option<String>,
     pub name: Option<String>,
+    pub organization_id: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -96,26 +105,19 @@ impl UserDataRepo {
         Ok(AccountId::new(id))
     }
 
-    pub async fn list_users_with_trade_counts(
-        &self,
-    ) -> DataResult<Vec<(String, Option<String>, i64)>> {
-        #[derive(sqlx::FromRow)]
-        struct Row {
-            external_id: String,
-            email: Option<String>,
-            trade_count: Option<i64>,
-        }
-        let rows = sqlx::query_as::<_, Row>(
-            "SELECT u.external_id, u.email, COUNT(t.id)::BIGINT as trade_count \
-             FROM users u LEFT JOIN trades t ON u.id = t.user_id \
-             GROUP BY u.external_id, u.email ORDER BY u.external_id",
+    pub async fn list_users_with_trade_counts(&self) -> DataResult<Vec<UserRow>> {
+        let rows = sqlx::query_as::<_, UserRow>(
+            "SELECT u.external_id, u.email, o.external_id AS organization_id, \
+                    COUNT(t.id)::BIGINT as trade_count \
+             FROM users u \
+             LEFT JOIN trades t ON u.id = t.user_id \
+             LEFT JOIN organizations o ON u.organization_id = o.id \
+             GROUP BY u.external_id, u.email, o.external_id \
+             ORDER BY u.external_id",
         )
         .fetch_all(&self.pool)
         .await?;
-        Ok(rows
-            .into_iter()
-            .map(|r| (r.external_id, r.email, r.trade_count.unwrap_or(0)))
-            .collect())
+        Ok(rows)
     }
 
     pub async fn count_users_and_trades(&self) -> DataResult<(i64, i64)> {
@@ -152,7 +154,10 @@ impl UserDataRepo {
 
     pub async fn find_all_users(&self) -> DataResult<Vec<User>> {
         let users = sqlx::query_as::<_, User>(
-            "SELECT external_id, email, name, created_at FROM users ORDER BY created_at",
+            "SELECT u.external_id, u.email, u.name, o.external_id AS organization_id, u.created_at \
+             FROM users u \
+             LEFT JOIN organizations o ON u.organization_id = o.id \
+             ORDER BY u.created_at",
         )
         .fetch_all(&self.pool)
         .await?;
@@ -161,7 +166,10 @@ impl UserDataRepo {
 
     pub async fn get_user(&self, external_id: &str) -> DataResult<User> {
         sqlx::query_as::<_, User>(
-            "SELECT external_id, email, name, created_at FROM users WHERE external_id = $1",
+            "SELECT u.external_id, u.email, u.name, o.external_id AS organization_id, u.created_at \
+             FROM users u \
+             LEFT JOIN organizations o ON u.organization_id = o.id \
+             WHERE u.external_id = $1",
         )
         .bind(external_id)
         .fetch_optional(&self.pool)
@@ -177,7 +185,7 @@ impl UserDataRepo {
     ) -> DataResult<User> {
         sqlx::query_as::<_, User>(
             "INSERT INTO users (external_id, email, name) VALUES ($1, $2, $3) \
-             RETURNING external_id, email, name, created_at",
+             RETURNING external_id, email, name, NULL::TEXT AS organization_id, created_at",
         )
         .bind(external_id)
         .bind(email)
@@ -194,13 +202,36 @@ impl UserDataRepo {
     ) -> DataResult<User> {
         sqlx::query_as::<_, User>(
             "UPDATE users SET name = $2 WHERE external_id = $1 \
-             RETURNING external_id, email, name, created_at",
+             RETURNING external_id, email, name, \
+             (SELECT o.external_id FROM organizations o WHERE o.id = users.organization_id) AS organization_id, \
+             created_at",
         )
         .bind(external_id)
         .bind(name)
         .fetch_optional(&self.pool)
         .await?
         .ok_or_else(|| DataError::NotFound(format!("user '{external_id}'")))
+    }
+
+    // ── Organization queries ────────────────────────────────────────────
+
+    pub async fn find_all_organizations(&self) -> DataResult<Vec<Organization>> {
+        let orgs = sqlx::query_as::<_, Organization>(
+            "SELECT external_id, name, created_at FROM organizations ORDER BY created_at",
+        )
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(orgs)
+    }
+
+    pub async fn get_organization(&self, external_id: &str) -> DataResult<Organization> {
+        sqlx::query_as::<_, Organization>(
+            "SELECT external_id, name, created_at FROM organizations WHERE external_id = $1",
+        )
+        .bind(external_id)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or_else(|| DataError::NotFound(format!("organization '{external_id}'")))
     }
 
     /// # Errors
@@ -214,6 +245,14 @@ impl UserDataRepo {
             .map_err(|e| DataError::from_constraint_violation(e, "user", external_id))?;
         Ok(result.rows_affected() > 0)
     }
+}
+
+#[derive(sqlx::FromRow)]
+pub struct UserRow {
+    pub external_id: String,
+    pub email: Option<String>,
+    pub organization_id: Option<String>,
+    pub trade_count: Option<i64>,
 }
 
 #[derive(sqlx::FromRow)]

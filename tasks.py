@@ -1,15 +1,23 @@
+import os
+import subprocess
+import sys
+import time as _time
+
 from invoke import task
 
 VENV = ".venv"
 PYTHON_CRATE = "crates/calce-python"
 MATURIN_MANIFEST = f"{PYTHON_CRATE}/Cargo.toml"
 API_PORT = 35701
+CALCE_DB = "services/calce-db"
+CALCE_AI = "services/calce-ai"
 
 
 # ── Server ──────────────────────────────────────────────────────────────
 #
-# Two backends:
+# Three backends:
 #   invoke api          — local Postgres (requires: invoke db, invoke seed-db)
+#   invoke ai           — AI chat interface (requires: invoke db, ANTHROPIC_API_KEY)
 #   invoke api-njorda   — njorda market-data cache (requires: invoke njorda-fetch)
 
 
@@ -39,9 +47,74 @@ def api_njorda(c, release=False, watch=False):
 
 
 @task
+def ai(c):
+    """Start AI financial analyst chat (requires DB + ANTHROPIC_API_KEY)."""
+    c.run(
+        f"{VENV}/bin/python -m calce_ai",
+        pty=True,
+        env={"PYTHONPATH": CALCE_AI},
+    )
+
+
+@task
 def explorer(c):
     """Open the dev console in the browser (API server must be running)."""
     c.run(f"open http://localhost:{API_PORT}")
+
+
+@task
+def dev(c):
+    """Start full dev environment: DB, API (hot-reload), and open explorer."""
+    # 1. Ensure DB is running + migrated
+    print("Starting database...")
+    c.run("docker compose up -d postgres", hide="both")
+    c.run(f"cd {CALCE_DB} && uv run alembic upgrade head", hide="both")
+
+    # 2. Start API with hot-reload in background
+    print("Starting API with hot-reload...")
+    env = {"RUST_LOG": "info"}
+    api_proc = subprocess.Popen(
+        ["cargo", "watch", "-x", "run -p calce-api"],
+        env={**os.environ, **env},
+    )
+
+    def _kill_api():
+        api_proc.terminate()
+        try:
+            api_proc.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            api_proc.kill()
+        # cargo watch spawns children in separate process groups;
+        # clean up any orphans still bound to our port.
+        subprocess.run(
+            f"lsof -ti:{API_PORT} | xargs kill -9 2>/dev/null",
+            shell=True,
+        )
+
+    # 3. Wait for API to be ready, then open explorer
+    print(f"Waiting for API on port {API_PORT}...")
+    try:
+        import urllib.request
+        for _ in range(60):
+            try:
+                urllib.request.urlopen(f"http://localhost:{API_PORT}/", timeout=1)
+                break
+            except Exception:
+                _time.sleep(1)
+        else:
+            print("Warning: API did not respond within 60s, opening browser anyway")
+        print(f"Opening explorer at http://localhost:{API_PORT}")
+        c.run(f"open http://localhost:{API_PORT}", hide="both")
+    except KeyboardInterrupt:
+        _kill_api()
+        sys.exit(0)
+
+    # 4. Keep running until Ctrl-C
+    try:
+        api_proc.wait()
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+        _kill_api()
 
 
 # ── Database ────────────────────────────────────────────────────────────
@@ -57,9 +130,6 @@ def db(c):
 def db_stop(c):
     """Stop the local Postgres database."""
     c.run("docker compose down", pty=True)
-
-
-CALCE_DB = "services/calce-db"
 
 
 def _alembic(c, args):
@@ -91,7 +161,6 @@ def db_reset(c):
     if answer.lower() != "y":
         print("Aborted.")
         return
-    import time as _time
     for i in range(3, 0, -1):
         print(f"  Wiping in {i}...")
         _time.sleep(1)

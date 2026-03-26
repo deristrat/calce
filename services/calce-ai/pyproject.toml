@@ -1,0 +1,12 @@
+[project]
+name = "calce-ai"
+version = "0.1.0"
+description = "AI financial analyst powered by calce + Claude"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.45",
+    "python-dotenv>=1.0",
+]
+
+[tool.setuptools]
+packages = ["calce_ai"]

@@ -50,6 +50,13 @@ impl MarketDataStore {
         }
     }
 
+    /// Consume the store and return the inner market data service and instrument list.
+    pub fn into_parts(self) -> (InMemoryMarketDataService, Vec<InstrumentSummary>) {
+        let md = Arc::try_unwrap(self.market_data)
+            .unwrap_or_else(|arc| (*arc).clone());
+        (md, self.instruments)
+    }
+
     pub fn market_data(&self) -> Arc<InMemoryMarketDataService> {
         Arc::clone(&self.market_data)
     }

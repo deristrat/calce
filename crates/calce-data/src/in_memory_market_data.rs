@@ -115,7 +115,6 @@ impl InMemoryMarketDataService {
     /// Sort pending data into dense date-indexed arrays and mark as ready for queries.
     #[allow(clippy::cast_sign_loss)]
     pub fn freeze(&mut self) {
-        debug_assert!(self.pending.is_some(), "already frozen");
         let Some(pending) = self.pending.take() else {
             return;
         };

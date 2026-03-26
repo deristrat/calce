@@ -158,28 +158,53 @@ def gen_fx_rates(
     return rows
 
 
+ORG_NAMES = [
+    "Acme Wealth", "Nordic Capital Partners", "Coastal Investments",
+    "Summit Advisory", "Horizon Asset Management",
+]
+
+
+def gen_organizations(n_orgs: int) -> list[tuple[str, str]]:
+    """Return organizations: (external_id, name)."""
+    orgs = []
+    for i in range(1, n_orgs + 1):
+        oid = f"org_{i:03d}"
+        name = ORG_NAMES[(i - 1) % len(ORG_NAMES)]
+        if i > len(ORG_NAMES):
+            name = f"{name} {i}"
+        orgs.append((oid, name))
+    return orgs
+
+
 def gen_users_and_accounts(
     n_users: int,
+    orgs: list[tuple[str, str]],
     rng: random.Random,
-) -> tuple[list[tuple[str, str]], list[tuple[str, str, str]]]:
-    """Return (users, accounts).
+) -> tuple[list[tuple[str, str]], list[tuple[str, str, str]], dict[str, str]]:
+    """Return (users, accounts, user_org_map).
 
     users: (external_id, email)
     accounts: (user_external_id, currency, label)
+    user_org_map: user_external_id -> org_external_id (for users that have an org)
     """
     users = []
     accounts = []
+    user_org_map: dict[str, str] = {}
+    org_ids = [oid for oid, _ in orgs]
     for i in range(1, n_users + 1):
         uid = f"user_{i:03d}"
         email = f"{uid}@example.com"
         users.append((uid, email))
+        # 80% of users belong to an organization
+        if rng.random() < 0.8:
+            user_org_map[uid] = rng.choice(org_ids)
         # 1-3 accounts per user in different currencies
         n_accts = rng.randint(1, 3)
         acct_currencies = rng.sample(CURRENCIES, k=n_accts)
         for j, ccy in enumerate(acct_currencies, 1):
             label = f"{uid} {ccy} account"
             accounts.append((uid, ccy, label))
-    return users, accounts
+    return users, accounts, user_org_map
 
 
 def gen_trades(
@@ -262,6 +287,7 @@ def gen_trades(
 def main():
     parser = argparse.ArgumentParser(description="Seed the Calce database with test data")
     parser.add_argument("--instruments", type=int, default=1000)
+    parser.add_argument("--organizations", type=int, default=5)
     parser.add_argument("--users", type=int, default=100)
     parser.add_argument("--trades-per-user", type=int, default=100)
     parser.add_argument("--history-years", type=int, default=5)
@@ -292,8 +318,11 @@ def main():
     print(f"Generating FX rates ({len(FX_PAIRS)} pairs × {len(trading_days)} days)...")
     fx_rows = gen_fx_rates(trading_days, rng)
 
+    print(f"Generating {args.organizations} organizations...")
+    organizations = gen_organizations(args.organizations)
+
     print(f"Generating {args.users} users with accounts...")
-    users, accounts = gen_users_and_accounts(args.users, rng)
+    users, accounts, user_org_map = gen_users_and_accounts(args.users, organizations, rng)
 
     gen_time = time.time() - t0
     print(f"Data generated in {gen_time:.1f}s")
@@ -335,9 +364,21 @@ def main():
         fx_rows,
     )
     timed_insert(
+        "organizations",
+        "INSERT INTO organizations (external_id, name) VALUES %s",
+        organizations,
+    )
+
+    # Build org external_id -> internal id map
+    conn.commit()
+    cur.execute("SELECT external_id, id FROM organizations")
+    org_to_id: dict[str, int] = {row[0]: row[1] for row in cur.fetchall()}
+
+    timed_insert(
         "users",
-        "INSERT INTO users (external_id, email) VALUES %s",
-        users,
+        "INSERT INTO users (external_id, email, organization_id) VALUES %s",
+        [(uid, email, org_to_id.get(user_org_map.get(uid, ""), 0) or None)
+         for uid, email in users],
     )
 
     # Build user external_id -> internal id map
@@ -375,10 +416,11 @@ def main():
 
     total = time.time() - t0
     print(f"\nDone in {total:.1f}s total")
+    print(f"  {len(organizations):,} organizations")
     print(f"  {len(instruments):,} instruments")
     print(f"  {len(price_rows):,} prices")
     print(f"  {len(fx_rows):,} fx rates")
-    print(f"  {len(users):,} users")
+    print(f"  {len(users):,} users ({len(user_org_map)} with org)")
     print(f"  {len(accounts):,} accounts")
     print(f"  {len(trade_rows):,} trades")
 

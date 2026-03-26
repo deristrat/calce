@@ -11,8 +11,9 @@ crates/
 ├── calce-data/             — Postgres-backed storage + DataService
 ├── calce-integrations/     — external data source integrations (njorda, etc.)
 ├── calce-api/              — HTTP server, wires data + core
-└── calce-python/           — PyO3 bindings (depends on core only)
+└── calce-python/           — PyO3 bindings (depends on core + data)
 services/
+├── calce-ai/               — AI chat interface (Anthropic Claude + calce bindings)
 └── calce-db/               — database schema management (Alembic/SQLAlchemy)
 docs/                       — reference, design and architecture documentation
 tools/                      — developer and testing tools, e.g. benchmarking
@@ -66,3 +67,7 @@ We use Invoke for task automation.
 maturin develop -m crates/calce-python/Cargo.toml
 pytest crates/calce-python/tests/
 ```
+
+### AI chat
+
+**`invoke ai`** — interactive AI analyst chat. Requires `DATABASE_URL` and `ANTHROPIC_API_KEY` in `.env`.

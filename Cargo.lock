@@ -375,6 +375,7 @@ dependencies = [
  "calce-data",
  "chrono",
  "pyo3",
+ "tokio",
 ]
 
 [[package]]

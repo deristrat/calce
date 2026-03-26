@@ -123,6 +123,7 @@ async fn data_stats(
 ) -> Result<Json<DataStats>, ApiError> {
     let stats = DataStats {
         user_count: state.user_data.user_count(),
+        organization_count: state.user_data.organization_count(),
         instrument_count: state.market_data.instrument_count(),
         trade_count: state.user_data.trade_count(),
         price_count: state.market_data.price_count(),
@@ -139,6 +140,8 @@ struct PaginationParams {
     limit: usize,
     #[serde(default)]
     search: Option<String>,
+    #[serde(default)]
+    organization_id: Option<String>,
 }
 
 fn default_page_size() -> usize {
@@ -159,16 +162,24 @@ async fn data_users(
     Query(params): Query<PaginationParams>,
 ) -> Result<Json<PaginatedResponse<UserSummary>>, ApiError> {
     let all = state.user_data.list_users(&ctx);
+    let after_org: Vec<_> = if let Some(ref org) = params.organization_id {
+        all.into_iter()
+            .filter(|u| u.organization_id.as_deref() == Some(org.as_str()))
+            .collect()
+    } else {
+        all
+    };
     let filtered: Vec<_> = if let Some(ref q) = params.search {
         let q = q.to_lowercase();
-        all.into_iter()
+        after_org
+            .into_iter()
             .filter(|u| {
                 u.id.to_lowercase().contains(&q)
                     || u.email.as_deref().unwrap_or("").to_lowercase().contains(&q)
             })
             .collect()
     } else {
-        all
+        after_org
     };
     let total = filtered.len();
     let items = filtered
@@ -195,11 +206,7 @@ async fn data_instruments(
         all.into_iter()
             .filter(|i| {
                 i.id.to_lowercase().contains(&q)
-                    || i.name
-                        .as_deref()
-                        .unwrap_or("")
-                        .to_lowercase()
-                        .contains(&q)
+                    || i.name.as_deref().unwrap_or("").to_lowercase().contains(&q)
                     || i.instrument_type.to_lowercase().contains(&q)
                     || i.currency.to_lowercase().contains(&q)
             })

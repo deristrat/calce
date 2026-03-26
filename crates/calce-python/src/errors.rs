@@ -7,6 +7,7 @@ pyo3::create_exception!(calce, FxRateNotFoundError, CalceError);
 pyo3::create_exception!(calce, NoTradesFoundError, CalceError);
 pyo3::create_exception!(calce, CurrencyMismatchError, CalceError);
 pyo3::create_exception!(calce, InsufficientDataError, CalceError);
+pyo3::create_exception!(calce, DataLoadError, CalceError);
 
 pub fn calce_err_to_py(err: calce_core::error::CalceError) -> PyErr {
     use calce_core::error::CalceError as E;
@@ -40,6 +41,10 @@ pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     parent.add(
         "InsufficientDataError",
         parent.py().get_type::<InsufficientDataError>(),
+    )?;
+    parent.add(
+        "DataLoadError",
+        parent.py().get_type::<DataLoadError>(),
     )?;
     Ok(())
 }

@@ -1,4 +1,5 @@
 mod calc;
+mod organizations;
 mod users;
 
 use axum::Router;
@@ -13,4 +14,8 @@ pub fn calc_routes() -> Router<AppState> {
 
 pub fn user_routes() -> Router<AppState> {
     users::routes()
+}
+
+pub fn organization_routes() -> Router<AppState> {
+    organizations::routes()
 }

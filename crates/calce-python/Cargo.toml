@@ -12,3 +12,4 @@ calce-core = { path = "../calce-core" }
 calce-data = { path = "../calce-data" }
 pyo3 = { version = "0.24", features = ["extension-module", "chrono"] }
 chrono = { version = "0.4", default-features = false, features = ["std"] }
+tokio = { version = "1", features = ["rt-multi-thread"] }

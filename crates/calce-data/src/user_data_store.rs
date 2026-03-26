@@ -18,6 +18,7 @@ pub struct UserDataStore {
 pub struct UserSummary {
     pub id: String,
     pub email: Option<String>,
+    pub organization_id: Option<String>,
     pub trade_count: i64,
 }
 
@@ -66,6 +67,7 @@ impl UserDataStore {
             .map(|id| UserSummary {
                 id: id.as_str().to_owned(),
                 email: None,
+                organization_id: None,
                 trade_count: 0,
             })
             .collect();
@@ -119,6 +121,16 @@ impl UserDataStore {
 
     pub fn trade_count(&self) -> i64 {
         i64::try_from(self.trades.values().map(Vec::len).sum::<usize>()).unwrap_or(0)
+    }
+
+    pub fn organization_count(&self) -> i64 {
+        let count = self
+            .users
+            .iter()
+            .filter_map(|u| u.organization_id.as_deref())
+            .collect::<std::collections::HashSet<_>>()
+            .len();
+        i64::try_from(count).unwrap_or(0)
     }
 }
 

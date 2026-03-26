@@ -34,6 +34,16 @@ struct CalculationResult<T> {
 
 This is a significant design decision that affects every calculation function signature.
 
+### Surface Outcome warnings
+
+`Outcome<T>` exists with warnings for partial results, but warnings are discarded at both the API and Python layers. Need to:
+- Surface `Outcome.warnings` in API responses (response wrapper or header)
+- Expose `Warning`/`WarningCode` types in Python bindings
+
+### DataService trait abstraction
+
+Currently one concrete backend (`InMemoryMarketDataService`). When adding a second backend (e.g. njorda), extract a trait-based approach so backends are composable.
+
 ## Medium Priority
 
 ### Trade ID for audit trails
