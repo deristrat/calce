@@ -44,6 +44,7 @@ def format_portfolio_report(report) -> str:
         for e in sa.entries:
             lines.append(f"  {e.key}: {e.weight:.1%} ({_money(e.market_value)})")
 
+    _append_warnings(lines, report.warnings)
     return "\n".join(lines)
 
 
@@ -54,6 +55,7 @@ def format_market_value(result) -> str:
         lines.append(
             f"  {p.instrument_id}: {p.quantity:,.0f} @ {p.price:,.2f} {p.currency.code} = {_money(p.market_value_base)}"
         )
+    _append_warnings(lines, result.warnings)
     return "\n".join(lines)
 
 
@@ -130,3 +132,12 @@ def _money(m) -> str:
 def _change(vc) -> str:
     pct = f" ({vc.change_pct:+.2f}%)" if vc.change_pct is not None else ""
     return f"{vc.change.amount:+,.2f} {vc.change.currency.code}{pct}"
+
+
+def _append_warnings(lines: list[str], warnings: list) -> None:
+    if not warnings:
+        return
+    lines.append("")
+    lines.append(f"Warnings ({len(warnings)}):")
+    for w in warnings:
+        lines.append(f"  [{w.code}] {w.message}")

@@ -229,8 +229,8 @@ mod tests {
         .await;
 
         assert_eq!(status, StatusCode::OK);
-        assert!(body["total"]["amount"].is_number());
-        assert!(body["positions"].is_array());
+        assert!(body["data"]["total"]["amount"].is_number());
+        assert!(body["data"]["positions"].is_array());
     }
 
     #[tokio::test]
@@ -265,8 +265,8 @@ mod tests {
         .await;
 
         assert_eq!(status, StatusCode::OK);
-        assert!(body["market_value"]["total"]["amount"].is_number());
-        assert!(body["value_changes"]["daily"]["change"]["amount"].is_number());
+        assert!(body["data"]["market_value"]["total"]["amount"].is_number());
+        assert!(body["data"]["value_changes"]["daily"]["change"]["amount"].is_number());
     }
 
     #[tokio::test]

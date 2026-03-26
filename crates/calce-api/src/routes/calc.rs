@@ -9,6 +9,7 @@ use calce_core::context::CalculationContext;
 use calce_core::domain::currency::Currency;
 use calce_core::domain::instrument::InstrumentId;
 use calce_core::domain::user::UserId;
+use calce_core::outcome::{Outcome, Warning, WarningCode};
 use calce_core::reports::portfolio::PortfolioReport;
 use calce_core::services::market_data::MarketDataService;
 use calce_data::market_data_store::InstrumentSummary;
@@ -61,12 +62,50 @@ fn parse_currency(s: &str) -> Result<Currency, ApiError> {
     Currency::try_new(s).map_err(|_| ApiError::BadRequest(format!("Invalid currency code: {s}")))
 }
 
+// ── Response wrapper for calculations that produce warnings ─────────
+
+#[derive(Serialize)]
+struct ApiWarning {
+    code: &'static str,
+    message: String,
+}
+
+impl From<&Warning> for ApiWarning {
+    fn from(w: &Warning) -> Self {
+        let code = match w.code {
+            WarningCode::MissingPrice => "MISSING_PRICE",
+            WarningCode::MissingFxRate => "MISSING_FX_RATE",
+        };
+        ApiWarning {
+            code,
+            message: w.message.clone(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct CalcResponse<T: Serialize> {
+    data: T,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    warnings: Vec<ApiWarning>,
+}
+
+impl<T: Serialize> CalcResponse<T> {
+    fn from_outcome(outcome: Outcome<T>) -> Self {
+        let warnings = outcome.warnings.iter().map(ApiWarning::from).collect();
+        CalcResponse {
+            data: outcome.value,
+            warnings,
+        }
+    }
+}
+
 async fn market_value(
     State(state): State<AppState>,
     Auth(security_ctx): Auth,
     Path(user_id): Path<String>,
     Query(params): Query<CalcParams>,
-) -> Result<Json<MarketValueResult>, ApiError> {
+) -> Result<Json<CalcResponse<MarketValueResult>>, ApiError> {
     let base_currency = parse_currency(&params.base_currency)?;
     let ctx = CalculationContext::new(base_currency, params.as_of_date);
     let user_id = UserId::new(user_id);
@@ -76,8 +115,7 @@ async fn market_value(
 
     let positions = aggregation::aggregate_positions(&trades, ctx.as_of_date)?;
     let outcome = market_value::value_positions(&positions, &ctx, &*market_data)?;
-    // TODO: surface outcome.warnings in response headers or a wrapper
-    Ok(Json(outcome.value))
+    Ok(Json(CalcResponse::from_outcome(outcome)))
 }
 
 async fn portfolio_report(
@@ -85,7 +123,7 @@ async fn portfolio_report(
     Auth(security_ctx): Auth,
     Path(user_id): Path<String>,
     Query(params): Query<CalcParams>,
-) -> Result<Json<PortfolioReport>, ApiError> {
+) -> Result<Json<CalcResponse<PortfolioReport>>, ApiError> {
     let base_currency = parse_currency(&params.base_currency)?;
     let ctx = CalculationContext::new(base_currency, params.as_of_date);
     let user_id = UserId::new(user_id);
@@ -94,8 +132,7 @@ async fn portfolio_report(
     let market_data = state.market_data.market_data();
 
     let outcome = calce_core::reports::portfolio::portfolio_report(&trades, &ctx, &*market_data)?;
-    // TODO: surface outcome.warnings in response headers or a wrapper
-    Ok(Json(outcome.value))
+    Ok(Json(CalcResponse::from_outcome(outcome)))
 }
 
 async fn volatility(

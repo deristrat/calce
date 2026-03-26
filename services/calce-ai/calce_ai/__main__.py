@@ -28,9 +28,14 @@ def main():
         sys.exit(1)
 
     # Connect and load data
+    database_url = os.environ.get("DATABASE_URL")
+    if not database_url:
+        print("Error: DATABASE_URL environment variable is required.")
+        sys.exit(1)
+
     print("Loading data from database...")
     try:
-        ds = calce.DataService()
+        ds = calce.DataService(database_url)
     except calce.DataLoadError as e:
         print(f"Error: {e}")
         sys.exit(1)

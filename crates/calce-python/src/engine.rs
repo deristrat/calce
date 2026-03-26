@@ -73,6 +73,7 @@ impl CalcEngine {
             .map_err(calce_err_to_py)?;
         market_value::value_positions(&positions, &self.ctx, &md.inner)
             .map(|outcome| MarketValueResult {
+                warnings: outcome.warnings,
                 inner: outcome.value,
             })
             .map_err(calce_err_to_py)
@@ -86,6 +87,7 @@ impl CalcEngine {
         })?;
         portfolio::portfolio_report(&trades, &self.ctx, &md.inner)
             .map(|outcome| PortfolioReport {
+                warnings: outcome.warnings,
                 inner: outcome.value,
             })
             .map_err(calce_err_to_py)

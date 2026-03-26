@@ -1,5 +1,3 @@
-use std::env;
-
 use chrono::NaiveDate;
 use pyo3::prelude::*;
 
@@ -32,16 +30,13 @@ pub struct DataService {
 #[pymethods]
 impl DataService {
     #[new]
-    fn new(py: Python<'_>) -> PyResult<Self> {
-        let db_url = env::var("DATABASE_URL")
-            .map_err(|_| DataLoadError::new_err("DATABASE_URL environment variable is required"))?;
-
+    fn new(py: Python<'_>, database_url: &str) -> PyResult<Self> {
         let rt = tokio::runtime::Runtime::new()
             .map_err(|e| DataLoadError::new_err(format!("Failed to create async runtime: {e}")))?;
 
         let (market_store, user_store) = rt
             .block_on(async {
-                let pool = calce_data::config::create_pool(Some(&db_url)).await?;
+                let pool = calce_data::config::create_pool(Some(database_url)).await?;
                 calce_data::loader::load_from_postgres(&pool).await
             })
             .map_err(|e| DataLoadError::new_err(format!("Failed to load data: {e}")))?;

@@ -16,8 +16,6 @@ caller to be an authenticated user of the system.
    (portfolios, trades, market value). Requires authentication *plus*
    an access check: can this user see that user's data?
 
-Instrument-scoped endpoints only need level 1. User-scoped endpoints
-need both.
 
 ## User Model
 

@@ -30,6 +30,7 @@ fn calce(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<data_types::PyDataStats>()?;
 
     // Result types
+    m.add_class::<results::Warning>()?;
     m.add_class::<results::ValuedPosition>()?;
     m.add_class::<results::MarketValueResult>()?;
     m.add_class::<results::ValueChange>()?;

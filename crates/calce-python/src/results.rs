@@ -3,6 +3,37 @@ use pyo3::prelude::*;
 
 use crate::domain::{Currency, Money};
 
+// ── Warning ─────────────────────────────────────────────────────────
+
+#[pyclass(frozen)]
+pub struct Warning {
+    pub inner: calce_core::outcome::Warning,
+}
+
+#[pymethods]
+impl Warning {
+    #[getter]
+    fn code(&self) -> &str {
+        match self.inner.code {
+            calce_core::outcome::WarningCode::MissingPrice => "MISSING_PRICE",
+            calce_core::outcome::WarningCode::MissingFxRate => "MISSING_FX_RATE",
+        }
+    }
+
+    #[getter]
+    fn message(&self) -> &str {
+        &self.inner.message
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "Warning(code=\"{}\", message=\"{}\")",
+            self.code(),
+            self.inner.message
+        )
+    }
+}
+
 #[pyclass(frozen)]
 pub struct ValuedPosition {
     pub inner: calce_core::calc::market_value::ValuedPosition,
@@ -59,6 +90,7 @@ impl ValuedPosition {
 #[pyclass(frozen)]
 pub struct MarketValueResult {
     pub inner: calce_core::calc::market_value::MarketValueResult,
+    pub warnings: Vec<calce_core::outcome::Warning>,
 }
 
 #[pymethods]
@@ -79,11 +111,20 @@ impl MarketValueResult {
         }
     }
 
+    #[getter]
+    fn warnings(&self) -> Vec<Warning> {
+        self.warnings
+            .iter()
+            .map(|w| Warning { inner: w.clone() })
+            .collect()
+    }
+
     fn __repr__(&self) -> String {
         format!(
-            "MarketValueResult(total={}, positions={})",
+            "MarketValueResult(total={}, positions={}, warnings={})",
             self.inner.total,
             self.inner.positions.len(),
+            self.warnings.len(),
         )
     }
 }
@@ -333,6 +374,7 @@ impl AllocationResult {
 #[pyclass(frozen)]
 pub struct PortfolioReport {
     pub inner: calce_core::reports::portfolio::PortfolioReport,
+    pub warnings: Vec<calce_core::outcome::Warning>,
 }
 
 #[pymethods]
@@ -344,6 +386,7 @@ impl PortfolioReport {
                 positions: self.inner.market_value.positions.clone(),
                 total: self.inner.market_value.total,
             },
+            warnings: Vec::new(),
         }
     }
 
@@ -394,11 +437,20 @@ impl PortfolioReport {
         }
     }
 
+    #[getter]
+    fn warnings(&self) -> Vec<Warning> {
+        self.warnings
+            .iter()
+            .map(|w| Warning { inner: w.clone() })
+            .collect()
+    }
+
     fn __repr__(&self) -> String {
         format!(
-            "PortfolioReport(market_value={}, positions={})",
+            "PortfolioReport(market_value={}, positions={}, warnings={})",
             self.inner.market_value.total,
             self.inner.market_value.positions.len(),
+            self.warnings.len(),
         )
     }
 }
