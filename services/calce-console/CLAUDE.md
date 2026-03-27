@@ -13,6 +13,8 @@ Internal admin console for the Calce platform.
 - All colors, spacing, typography come from CSS custom properties in `src/design/tokens.css`
 - Keep the UI information-dense: tight spacing, small text, compact controls
 - Tables should show 30+ rows without scrolling
+- All lists (dropdowns, tables, etc.) must have a sensible sort order — alphabetical by name is the default
+- Numeric table columns must be right-aligned with `meta: { numeric: true }` on the column def — DataTable applies `ds-table__cell--numeric` (right-align + tabular-nums) automatically
 
 ### Adding new components
 

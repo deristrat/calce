@@ -55,9 +55,7 @@ pub fn routes() -> Router<AppState> {
 
 /// Extract client IP and check rate limit for auth endpoints.
 fn check_auth_rate_limit(headers: &HeaderMap, state: &AppState) -> Result<(), ApiError> {
-    let xff = headers
-        .get("x-forwarded-for")
-        .and_then(|v| v.to_str().ok());
+    let xff = headers.get("x-forwarded-for").and_then(|v| v.to_str().ok());
     let ip = rate_limit::extract_ip(xff);
     rate_limit::check_rate_limit(&state.auth_rate_limiter, ip)
 }
@@ -84,8 +82,9 @@ async fn issue_tokens(
     role: &Role,
     family_id: Uuid,
 ) -> Result<TokenResponse, ApiError> {
-    let access_token = jwt::encode_access_token(user_external_id, role, None, &config.jwt_encoding_key)
-        .map_err(|e| ApiError::BadRequest(format!("token error: {e}")))?;
+    let access_token =
+        jwt::encode_access_token(user_external_id, role, None, &config.jwt_encoding_key)
+            .map_err(|e| ApiError::BadRequest(format!("token error: {e}")))?;
 
     let refresh_value = tokens::generate_token();
     let token_hash = tokens::hmac_hash(&refresh_value, &config.hmac_secret);

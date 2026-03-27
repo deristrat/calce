@@ -7,13 +7,43 @@ import Badge from '../components/Badge'
 import Card from '../components/Card'
 import StatCard from '../components/StatCard'
 import DataTable from '../components/DataTable'
-import Modal from '../components/Modal'
 import Pagination from '../components/Pagination'
-import Tabs from '../components/Tabs'
 import Spinner from '../components/Spinner'
-import EmptyState from '../components/EmptyState'
+import PriceChart from '../components/PriceChart'
+import CrossRateMatrix from '../components/CrossRateMatrix'
+import Breadcrumbs from '../components/Breadcrumbs'
+import ThemeToggle from '../components/ThemeToggle'
 import { IconPlus } from '../components/icons'
 import { usePageTitle } from '../hooks/usePageTitle'
+import type { Price, FxRateSummary } from '../api/types'
+
+const samplePrices: Price[] = [
+  { date: '2025-01-02', price: 243.85 },
+  { date: '2025-01-15', price: 248.12 },
+  { date: '2025-02-03', price: 252.40 },
+  { date: '2025-02-18', price: 247.65 },
+  { date: '2025-03-05', price: 255.90 },
+  { date: '2025-03-20', price: 261.30 },
+  { date: '2025-04-01', price: 258.75 },
+  { date: '2025-04-15', price: 264.20 },
+  { date: '2025-05-02', price: 270.50 },
+  { date: '2025-05-19', price: 268.10 },
+]
+
+const sampleFxRates: FxRateSummary[] = [
+  { from_currency: 'USD', to_currency: 'EUR', pair: 'USD/EUR', data_points: 250, latest_rate: 0.9215 },
+  { from_currency: 'USD', to_currency: 'GBP', pair: 'USD/GBP', data_points: 250, latest_rate: 0.7892 },
+  { from_currency: 'USD', to_currency: 'SEK', pair: 'USD/SEK', data_points: 250, latest_rate: 10.3450 },
+  { from_currency: 'EUR', to_currency: 'USD', pair: 'EUR/USD', data_points: 250, latest_rate: 1.0852 },
+  { from_currency: 'EUR', to_currency: 'GBP', pair: 'EUR/GBP', data_points: 250, latest_rate: 0.8565 },
+  { from_currency: 'EUR', to_currency: 'SEK', pair: 'EUR/SEK', data_points: 250, latest_rate: 11.2300 },
+  { from_currency: 'GBP', to_currency: 'USD', pair: 'GBP/USD', data_points: 250, latest_rate: 1.2671 },
+  { from_currency: 'GBP', to_currency: 'EUR', pair: 'GBP/EUR', data_points: 250, latest_rate: 1.1676 },
+  { from_currency: 'GBP', to_currency: 'SEK', pair: 'GBP/SEK', data_points: 250, latest_rate: 13.1100 },
+  { from_currency: 'SEK', to_currency: 'USD', pair: 'SEK/USD', data_points: 250, latest_rate: 0.0967 },
+  { from_currency: 'SEK', to_currency: 'EUR', pair: 'SEK/EUR', data_points: 250, latest_rate: 0.0891 },
+  { from_currency: 'SEK', to_currency: 'GBP', pair: 'SEK/GBP', data_points: 250, latest_rate: 0.0763 },
+]
 
 interface SampleRow {
   id: number
@@ -31,9 +61,7 @@ const sampleData: SampleRow[] = [
 
 export default function DesignComponentsPage() {
   usePageTitle('Design Components')
-  const [modalOpen, setModalOpen] = useState(false)
   const [demoPage, setDemoPage] = useState(3)
-  const [demoTab, setDemoTab] = useState('First')
   const [searchValue, setSearchValue] = useState('')
 
   const sampleColumns = useMemo<ColumnDef<SampleRow, unknown>[]>(
@@ -175,41 +203,9 @@ export default function DesignComponentsPage() {
 
       <div style={{ height: 'var(--spacing-xl)' }} />
 
-      {/* Modals */}
-      <Card header="Modals">
-        <Button variant="primary" onClick={() => setModalOpen(true)}>
-          Open Modal
-        </Button>
-        <Modal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title="Sample Modal"
-          footer={
-            <>
-              <Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button>
-              <Button variant="primary" onClick={() => setModalOpen(false)}>Confirm</Button>
-            </>
-          }
-        >
-          <p>This is a modal dialog. It can contain any content including forms, text, or other components.</p>
-        </Modal>
-      </Card>
-
-      <div style={{ height: 'var(--spacing-xl)' }} />
-
       {/* Pagination */}
       <Card header="Pagination">
         <Pagination page={demoPage} totalPages={10} onPageChange={setDemoPage} />
-      </Card>
-
-      <div style={{ height: 'var(--spacing-xl)' }} />
-
-      {/* Tabs */}
-      <Card header="Tabs">
-        <Tabs tabs={['First', 'Second', 'Third']} active={demoTab} onChange={setDemoTab} />
-        <div style={{ padding: 'var(--spacing-xl) 0', fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
-          Active tab: {demoTab}
-        </div>
       </Card>
 
       <div style={{ height: 'var(--spacing-xl)' }} />
@@ -234,19 +230,34 @@ export default function DesignComponentsPage() {
 
       <div style={{ height: 'var(--spacing-xl)' }} />
 
-      {/* Empty State */}
-      <Card header="Empty State">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--spacing-xl)' }}>
-          <div style={{ border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
-            <EmptyState title="No data found" description="There are no items matching your criteria." />
-          </div>
-          <div style={{ border: '1px dashed var(--color-border)', borderRadius: 'var(--radius-lg)' }}>
-            <EmptyState
-              title="No instruments"
-              description="Get started by adding your first instrument."
-              action={<Button variant="primary" size="sm"><IconPlus size={14} /> Add Instrument</Button>}
-            />
-          </div>
+      {/* Price Chart */}
+      <Card header="Price Chart">
+        <PriceChart data={samplePrices} />
+      </Card>
+
+      <div style={{ height: 'var(--spacing-xl)' }} />
+
+      {/* Cross Rate Matrix */}
+      <Card header="Cross Rate Matrix">
+        <CrossRateMatrix rates={sampleFxRates} />
+      </Card>
+
+      <div style={{ height: 'var(--spacing-xl)' }} />
+
+      {/* Breadcrumbs */}
+      <Card header="Breadcrumbs">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-lg)' }}>
+          <Breadcrumbs items={[{ label: 'Dashboard', to: '/' }, { label: 'Instruments', to: '/instruments' }, { label: 'AAPL' }]} />
+          <Breadcrumbs items={[{ label: 'FX Rates', to: '/fx-rates' }, { label: 'USD/EUR' }]} />
+        </div>
+      </Card>
+
+      <div style={{ height: 'var(--spacing-xl)' }} />
+
+      {/* Theme Toggle */}
+      <Card header="Theme Toggle">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
+          <ThemeToggle />
         </div>
       </Card>
     </div>

@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router'
 import { api } from '../api/client'
 import type { FxRateSummary } from '../api/types'
 import { PAGE_SIZE } from '../constants'
+import CrossRateMatrix from '../components/CrossRateMatrix'
 import DataTable from '../components/DataTable'
 import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
@@ -42,6 +43,11 @@ export default function FxRatesPage() {
     }, DEBOUNCE_MS)
     return () => clearTimeout(timeout)
   }, [search, fromFilter, toFilter, setSearchParams])
+
+  const { data: allRates } = useQuery({
+    queryKey: ['fx-rates-all'],
+    queryFn: () => api.getFxRates({ limit: 200 }),
+  })
 
   const offset = (page - 1) * PAGE_SIZE
 
@@ -81,6 +87,7 @@ export default function FxRatesPage() {
       {
         accessorKey: 'latest_rate',
         header: 'Latest Rate',
+        meta: { numeric: true },
         cell: ({ getValue }) => {
           const v = getValue<number | null>()
           return v != null ? (
@@ -91,6 +98,7 @@ export default function FxRatesPage() {
       {
         accessorKey: 'data_points',
         header: 'Data Points',
+        meta: { numeric: true },
         cell: ({ getValue }) => getValue<number>().toLocaleString(),
       },
     ],
@@ -101,6 +109,11 @@ export default function FxRatesPage() {
     <div className="ds-page">
       <div className="ds-page__header">
         <h1 className="ds-page__title">FX Rates</h1>
+      </div>
+
+      {allRates && <CrossRateMatrix rates={allRates.items} />}
+
+      <div className="ds-page__header">
         <div className="ds-page__actions">
           <SearchInput
             value={fromFilter}

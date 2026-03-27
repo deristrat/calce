@@ -7,6 +7,8 @@ import OrganizationsPage from './pages/OrganizationsPage'
 import OrganizationDetailPage from './pages/OrganizationDetailPage'
 import UsersPage from './pages/UsersPage'
 import UserDetailPage from './pages/UserDetailPage'
+import AccountDetailPage from './pages/AccountDetailPage'
+import PositionDetailPage from './pages/PositionDetailPage'
 import FxRateDetailPage from './pages/FxRateDetailPage'
 import FxRatesPage from './pages/FxRatesPage'
 import InstrumentsPage from './pages/InstrumentsPage'
@@ -28,6 +30,8 @@ export default function App() {
           <Route path="/organizations/:id" element={<OrganizationDetailPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/users/:id" element={<UserDetailPage />} />
+          <Route path="/users/:userId/accounts/:accountId" element={<AccountDetailPage />} />
+          <Route path="/users/:userId/positions/:instrumentId" element={<PositionDetailPage />} />
           <Route path="/fx-rates" element={<FxRatesPage />} />
           <Route path="/fx-rates/:from/:to" element={<FxRateDetailPage />} />
           <Route path="/instruments" element={<InstrumentsPage />} />

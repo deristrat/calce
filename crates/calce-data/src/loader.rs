@@ -42,18 +42,20 @@ pub async fn load_from_postgres(pool: &PgPool) -> DataResult<(MarketDataStore, U
 
     let instruments: Vec<InstrumentSummary> = instruments_raw
         .into_iter()
-        .map(|(id, ticker, currency, name, instrument_type, alloc_json)| {
-            let allocations: HashMap<String, Vec<(String, f64)>> =
-                parse_allocations_json(&alloc_json);
-            InstrumentSummary {
-                id,
-                ticker,
-                currency,
-                name,
-                instrument_type,
-                allocations,
-            }
-        })
+        .map(
+            |(id, ticker, currency, name, instrument_type, alloc_json)| {
+                let allocations: HashMap<String, Vec<(String, f64)>> =
+                    parse_allocations_json(&alloc_json);
+                InstrumentSummary {
+                    id,
+                    ticker,
+                    currency,
+                    name,
+                    instrument_type,
+                    allocations,
+                }
+            },
+        )
         .collect();
 
     let mut md = InMemoryMarketDataService::new();

@@ -49,8 +49,8 @@ mod tests {
     #[test]
     fn org_scoped_admin_cannot_access_arbitrary_user_data() {
         let alice = UserId::new("alice");
-        let ctx = SecurityContext::new(UserId::new("org1"), Role::Admin)
-            .with_org("org1".to_owned());
+        let ctx =
+            SecurityContext::new(UserId::new("org1"), Role::Admin).with_org("org1".to_owned());
         // Org-scoped admins are denied by default — route handlers must
         // verify org membership via DB before granting access.
         assert!(!can_access_user_data(&ctx, &alice));

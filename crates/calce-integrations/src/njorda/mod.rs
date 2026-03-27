@@ -201,7 +201,13 @@ pub fn build_service(cached: &CachedMarketData) -> Result<InMemoryMarketDataServ
         if need_inverse {
             let inverse: Vec<f64> = arr
                 .iter()
-                .map(|&r| if r == 0.0 || r.is_nan() { f64::NAN } else { 1.0 / r })
+                .map(|&r| {
+                    if r == 0.0 || r.is_nan() {
+                        f64::NAN
+                    } else {
+                        1.0 / r
+                    }
+                })
                 .collect();
             dense_fx.insert((to_ccy, from_ccy), inverse);
         }

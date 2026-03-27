@@ -381,4 +381,3 @@ mod tests {
         assert!(body.as_array().is_some());
     }
 }
-

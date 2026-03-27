@@ -21,6 +21,28 @@ test('fx rates page loads with table', async ({ page }) => {
   await expect(page.locator('.ds-search')).toHaveCount(3)
 })
 
+test('fx rates page shows cross-rate matrix', async ({ page }) => {
+  await login(page)
+  await page.goto('/fx-rates')
+  const matrix = page.locator('.ds-matrix')
+  await expect(matrix).toBeVisible()
+  // Matrix should have header cells for currencies
+  const headers = matrix.locator('thead th')
+  const count = await headers.count()
+  // At least a few currencies + the empty corner cell
+  expect(count).toBeGreaterThan(5)
+})
+
+test('clicking matrix cell navigates to detail', async ({ page }) => {
+  await login(page)
+  await page.goto('/fx-rates')
+  await page.waitForSelector('.ds-matrix')
+  // Click a clickable cell (not identity, not empty)
+  const clickable = page.locator('.ds-matrix__cell--clickable').first()
+  await clickable.click()
+  await expect(page).toHaveURL(/\/fx-rates\/[A-Z]+\/[A-Z]+/)
+})
+
 test('fx rates from filter works', async ({ page }) => {
   await login(page)
   await page.goto('/fx-rates')

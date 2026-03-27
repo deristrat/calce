@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::Json;
 use axum::Router;
 use axum::extract::{Path, Query, State};
@@ -8,14 +10,15 @@ use calce_core::calc::volatility::{self, VolatilityResult};
 use calce_core::context::CalculationContext;
 use calce_core::domain::currency::Currency;
 use calce_core::domain::instrument::InstrumentId;
+use calce_core::domain::trade::Trade;
 use calce_core::domain::user::UserId;
 use calce_core::outcome::{Outcome, Warning, WarningCode};
 use calce_core::reports::portfolio::PortfolioReport;
 use calce_core::services::market_data::MarketDataService;
 use calce_data::market_data_store::{FxRateSummary, InstrumentSummary};
-use calce_data::types::DataStats;
 use calce_data::queries::user_data::{AccountSummary, UserDataRepo};
-use calce_data::user_data_store::{PositionSummary, UserSummary};
+use calce_data::types::DataStats;
+use calce_data::user_data_store::UserSummary;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
@@ -27,6 +30,7 @@ use crate::state::AppState;
 
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .route("/v1/version", get(version))
         .route("/v1/users/{user_id}/market-value", get(market_value))
         .route("/v1/users/{user_id}/portfolio", get(portfolio_report))
         .route(
@@ -36,14 +40,21 @@ pub fn routes() -> Router<AppState> {
         .route("/v1/data/stats", get(data_stats))
         .route("/v1/data/users", get(data_users))
         .route("/v1/data/users/{user_id}", get(data_user))
+        .route("/v1/data/users/{user_id}/accounts", get(user_accounts))
+        .route("/v1/data/users/{user_id}/positions", get(user_positions))
         .route(
-            "/v1/data/users/{user_id}/accounts",
-            get(user_accounts),
+            "/v1/data/users/{user_id}/positions/{instrument_id}/trades",
+            get(position_trades),
         )
         .route(
-            "/v1/data/users/{user_id}/positions",
-            get(user_positions),
+            "/v1/data/users/{user_id}/accounts/{account_id}/positions",
+            get(account_positions),
         )
+        .route(
+            "/v1/data/users/{user_id}/accounts/{account_id}/trades",
+            get(account_trades),
+        )
+        .route("/v1/data/users/{user_id}/trades", get(user_trades))
         .route("/v1/data/fx-rates", get(data_fx_rates))
         .route(
             "/v1/data/fx-rates/{from}/{to}/history",
@@ -55,6 +66,10 @@ pub fn routes() -> Router<AppState> {
             "/v1/data/instruments/{instrument_id}/prices",
             get(instrument_prices),
         )
+}
+
+async fn version() -> Json<serde_json::Value> {
+    Json(serde_json::json!({ "version": env!("CARGO_PKG_VERSION") }))
 }
 
 #[derive(Deserialize)]
@@ -273,14 +288,188 @@ async fn user_accounts(
     Ok(Json(accounts))
 }
 
+#[derive(Serialize)]
+struct PositionResponse {
+    instrument_id: String,
+    instrument_name: Option<String>,
+    quantity: f64,
+    currency: String,
+    trade_count: i64,
+}
+
 async fn user_positions(
     Auth(ctx): Auth,
     State(state): State<AppState>,
     Path(user_id): Path<String>,
-) -> Result<Json<Vec<PositionSummary>>, ApiError> {
+) -> Result<Json<Vec<PositionResponse>>, ApiError> {
     let user_id = UserId::new(user_id);
     let positions = state.user_data.positions_for_user(&ctx, &user_id)?;
-    Ok(Json(positions))
+
+    let instruments = state.market_data.list_instruments();
+    let name_lookup: HashMap<&str, Option<&str>> = instruments
+        .iter()
+        .map(|i| (i.ticker.as_str(), i.name.as_deref()))
+        .collect();
+
+    let enriched = positions
+        .into_iter()
+        .map(|p| {
+            let instrument_name = name_lookup
+                .get(p.instrument_id.as_str())
+                .copied()
+                .flatten()
+                .map(str::to_owned);
+            PositionResponse {
+                instrument_id: p.instrument_id,
+                instrument_name,
+                quantity: p.quantity,
+                currency: p.currency,
+                trade_count: p.trade_count,
+            }
+        })
+        .collect();
+
+    Ok(Json(enriched))
+}
+
+/// Best-effort lookup: returns empty map if DB is unavailable (in-memory mode).
+async fn load_account_names(state: &AppState, user_id: &str) -> HashMap<i64, String> {
+    let Some(pool) = state.pool.as_ref() else {
+        return HashMap::new();
+    };
+    let repo = UserDataRepo::new(pool.clone());
+    match repo.get_user_accounts(user_id).await {
+        Ok(accounts) => accounts.into_iter().map(|a| (a.id, a.label)).collect(),
+        Err(_) => HashMap::new(),
+    }
+}
+
+#[derive(Serialize)]
+struct TradeSummary {
+    account_id: i64,
+    account_name: Option<String>,
+    instrument_id: String,
+    quantity: f64,
+    price: f64,
+    total_value: f64,
+    currency: String,
+    date: NaiveDate,
+}
+
+impl TradeSummary {
+    fn from_trade(t: &Trade, account_names: &HashMap<i64, String>) -> Self {
+        let quantity = t.quantity.value();
+        let price = t.price.value();
+        Self {
+            account_id: t.account_id.value(),
+            account_name: account_names.get(&t.account_id.value()).cloned(),
+            instrument_id: t.instrument_id.as_str().to_owned(),
+            quantity,
+            price,
+            total_value: quantity * price,
+            currency: t.currency.as_str().to_owned(),
+            date: t.date,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct PositionTradesPath {
+    user_id: String,
+    instrument_id: String,
+}
+
+async fn position_trades(
+    Auth(ctx): Auth,
+    State(state): State<AppState>,
+    Path(path): Path<PositionTradesPath>,
+) -> Result<Json<Vec<TradeSummary>>, ApiError> {
+    let user_id = UserId::new(&path.user_id);
+    let trades = state.user_data.load_trades(&ctx, &[user_id])?;
+    let account_names = load_account_names(&state, &path.user_id).await;
+    let mut filtered: Vec<TradeSummary> = trades
+        .iter()
+        .filter(|t| t.instrument_id.as_str() == path.instrument_id)
+        .map(|t| TradeSummary::from_trade(t, &account_names))
+        .collect();
+    filtered.sort_by(|a, b| a.date.cmp(&b.date));
+    Ok(Json(filtered))
+}
+
+#[derive(Deserialize)]
+struct AccountTradesPath {
+    user_id: String,
+    account_id: i64,
+}
+
+async fn account_trades(
+    Auth(ctx): Auth,
+    State(state): State<AppState>,
+    Path(path): Path<AccountTradesPath>,
+) -> Result<Json<Vec<TradeSummary>>, ApiError> {
+    let user_id = UserId::new(&path.user_id);
+    let trades = state.user_data.load_trades(&ctx, &[user_id])?;
+    let account_names = load_account_names(&state, &path.user_id).await;
+    let mut filtered: Vec<TradeSummary> = trades
+        .iter()
+        .filter(|t| t.account_id.value() == path.account_id)
+        .map(|t| TradeSummary::from_trade(t, &account_names))
+        .collect();
+    filtered.sort_by(|a, b| a.date.cmp(&b.date));
+    Ok(Json(filtered))
+}
+
+async fn account_positions(
+    Auth(ctx): Auth,
+    State(state): State<AppState>,
+    Path(path): Path<AccountTradesPath>,
+) -> Result<Json<Vec<PositionResponse>>, ApiError> {
+    let user_id = UserId::new(&path.user_id);
+    let positions = state
+        .user_data
+        .positions_for_account(&ctx, &user_id, path.account_id)?;
+
+    let instruments = state.market_data.list_instruments();
+    let name_lookup: HashMap<&str, Option<&str>> = instruments
+        .iter()
+        .map(|i| (i.ticker.as_str(), i.name.as_deref()))
+        .collect();
+
+    let enriched = positions
+        .into_iter()
+        .map(|p| {
+            let instrument_name = name_lookup
+                .get(p.instrument_id.as_str())
+                .copied()
+                .flatten()
+                .map(str::to_owned);
+            PositionResponse {
+                instrument_id: p.instrument_id,
+                instrument_name,
+                quantity: p.quantity,
+                currency: p.currency,
+                trade_count: p.trade_count,
+            }
+        })
+        .collect();
+
+    Ok(Json(enriched))
+}
+
+async fn user_trades(
+    Auth(ctx): Auth,
+    State(state): State<AppState>,
+    Path(user_id): Path<String>,
+) -> Result<Json<Vec<TradeSummary>>, ApiError> {
+    let names = load_account_names(&state, &user_id).await;
+    let user_id = UserId::new(user_id);
+    let trades = state.user_data.load_trades(&ctx, &[user_id])?;
+    let mut result: Vec<TradeSummary> = trades
+        .iter()
+        .map(|t| TradeSummary::from_trade(t, &names))
+        .collect();
+    result.sort_by(|a, b| a.date.cmp(&b.date));
+    Ok(Json(result))
 }
 
 async fn data_instruments(

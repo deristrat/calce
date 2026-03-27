@@ -2,11 +2,22 @@ import { useEffect, useRef } from 'react'
 import { createChart, type IChartApi, ColorType } from 'lightweight-charts'
 import type { Price } from '../api/types'
 
-interface PriceChartProps {
-  data: Price[]
+export interface ChartMarker {
+  time: string
+  position: 'aboveBar' | 'belowBar' | 'inBar'
+  color: string
+  shape: 'circle' | 'square' | 'arrowUp' | 'arrowDown'
+  text?: string
 }
 
-function PriceChart({ data }: PriceChartProps) {
+interface PriceChartProps {
+  data: Price[]
+  overlayData?: Price[]
+  overlayLabel?: string
+  markers?: ChartMarker[]
+}
+
+function PriceChart({ data, overlayData, markers }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
 
@@ -45,6 +56,26 @@ function PriceChart({ data }: PriceChartProps) {
       .sort((a, b) => a.time.localeCompare(b.time))
 
     series.setData(chartData)
+
+    if (markers && markers.length > 0) {
+      const sorted = [...markers].sort((a, b) => a.time.localeCompare(b.time))
+      series.setMarkers(sorted)
+    }
+
+    if (overlayData && overlayData.length > 0) {
+      const overlaySeries = chart.addLineSeries({
+        color: getComputedStyle(document.documentElement).getPropertyValue('--color-warning').trim() || '#e8710a',
+        lineWidth: 2,
+        lineStyle: 2,
+      })
+
+      const overlayChartData = overlayData
+        .map((p) => ({ time: p.date as string, value: p.price }))
+        .sort((a, b) => a.time.localeCompare(b.time))
+
+      overlaySeries.setData(overlayChartData)
+    }
+
     chart.timeScale().fitContent()
     chartRef.current = chart
 
@@ -60,7 +91,7 @@ function PriceChart({ data }: PriceChartProps) {
       chart.remove()
       chartRef.current = null
     }
-  }, [data])
+  }, [data, overlayData, markers])
 
   if (data.length === 0) {
     return <div style={{ padding: '48px', textAlign: 'center', color: 'var(--color-text-tertiary)' }}>No price data</div>

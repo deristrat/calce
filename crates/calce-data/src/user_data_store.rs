@@ -167,12 +167,50 @@ impl UserDataStore {
 
         let mut result: Vec<PositionSummary> = positions
             .into_iter()
-            .map(|(instrument_id, (quantity, currency, trade_count))| PositionSummary {
-                instrument_id,
-                quantity,
-                currency,
-                trade_count,
-            })
+            .map(
+                |(instrument_id, (quantity, currency, trade_count))| PositionSummary {
+                    instrument_id,
+                    quantity,
+                    currency,
+                    trade_count,
+                },
+            )
+            .collect();
+        result.sort_by(|a, b| a.instrument_id.cmp(&b.instrument_id));
+        Ok(result)
+    }
+
+    pub fn positions_for_account(
+        &self,
+        ctx: &SecurityContext,
+        user_id: &UserId,
+        account_id: i64,
+    ) -> DataResult<Vec<PositionSummary>> {
+        check_user_access(ctx, user_id)?;
+        let trades = self.trades_for(user_id).unwrap_or_default();
+
+        let mut positions: HashMap<String, (f64, String, i64)> = HashMap::new();
+        for trade in &trades {
+            if trade.account_id.value() != account_id {
+                continue;
+            }
+            let entry = positions
+                .entry(trade.instrument_id.as_str().to_owned())
+                .or_insert((0.0, trade.currency.as_str().to_owned(), 0));
+            entry.0 += trade.quantity.value();
+            entry.2 += 1;
+        }
+
+        let mut result: Vec<PositionSummary> = positions
+            .into_iter()
+            .map(
+                |(instrument_id, (quantity, currency, trade_count))| PositionSummary {
+                    instrument_id,
+                    quantity,
+                    currency,
+                    trade_count,
+                },
+            )
             .collect();
         result.sort_by(|a, b| a.instrument_id.cmp(&b.instrument_id));
         Ok(result)

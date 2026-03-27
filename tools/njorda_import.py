@@ -415,7 +415,8 @@ def main():
 
     print("Wiping existing data...")
     calce_cur.execute(
-        "TRUNCATE trades, accounts, user_credentials, refresh_tokens, users, organizations, prices, fx_rates, instruments RESTART IDENTITY CASCADE"
+        "TRUNCATE trades, accounts, user_credentials, refresh_tokens, users,"
+        " organizations, prices, fx_rates, instruments RESTART IDENTITY CASCADE"
     )
     calce_conn.commit()
 

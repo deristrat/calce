@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
 import { useMemo } from 'react'
 import { api } from '../api/client'
-import type { AccountSummary, PositionSummary, TradeSummary } from '../api/types'
+import type { PositionSummary, TradeSummary } from '../api/types'
 import { IconChevronLeft } from '../components/icons'
 import Card from '../components/Card'
 import Badge from '../components/Badge'
@@ -11,62 +11,38 @@ import DataTable from '../components/DataTable'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
 
-export default function UserDetailPage() {
-  const { id } = useParams()
+export default function AccountDetailPage() {
+  const { userId, accountId } = useParams()
   const navigate = useNavigate()
+  const accountIdNum = Number(accountId)
 
-  const { data: user, isLoading: userLoading, error: userError } = useQuery({
-    queryKey: ['user', id],
-    queryFn: () => api.getUser(id!),
-    enabled: !!id,
+  const { data: user, isLoading: userLoading } = useQuery({
+    queryKey: ['user', userId],
+    queryFn: () => api.getUser(userId!),
+    enabled: !!userId,
   })
-
-  usePageTitle(user?.name || user?.email || id || 'User')
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
-    queryKey: ['user-accounts', id],
-    queryFn: () => api.getUserAccounts(id!),
-    enabled: !!id,
+    queryKey: ['user-accounts', userId],
+    queryFn: () => api.getUserAccounts(userId!),
+    enabled: !!userId,
   })
 
+  const account = accounts?.find((a) => a.id === accountIdNum)
+
   const { data: positions, isLoading: positionsLoading } = useQuery({
-    queryKey: ['user-positions', id],
-    queryFn: () => api.getUserPositions(id!),
-    enabled: !!id,
+    queryKey: ['account-positions', userId, accountId],
+    queryFn: () => api.getAccountPositions(userId!, accountIdNum),
+    enabled: !!userId && !!accountId,
   })
 
   const { data: trades, isLoading: tradesLoading } = useQuery({
-    queryKey: ['user-trades', id],
-    queryFn: () => api.getUserTrades(id!),
-    enabled: !!id,
+    queryKey: ['account-trades', userId, accountId],
+    queryFn: () => api.getAccountTrades(userId!, accountIdNum),
+    enabled: !!userId && !!accountId,
   })
 
-  const accountColumns = useMemo<ColumnDef<AccountSummary, unknown>[]>(
-    () => [
-      { accessorKey: 'label', header: 'Name' },
-      { accessorKey: 'position_count', header: 'Positions', meta: { numeric: true } },
-      { accessorKey: 'trade_count', header: 'Trades', meta: { numeric: true } },
-      {
-        accessorKey: 'market_value',
-        header: 'Market Value',
-        meta: { numeric: true },
-        cell: ({ getValue, row }) => {
-          const val = getValue<number | null>()
-          if (val == null) return <span className="ds-text--secondary">-</span>
-          return (
-            <span className="ds-text--mono">
-              {val.toLocaleString(undefined, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })}{' '}
-              {row.original.currency}
-            </span>
-          )
-        },
-      },
-    ],
-    []
-  )
+  usePageTitle(account?.label || `Account ${accountId}`)
 
   const positionColumns = useMemo<ColumnDef<PositionSummary, unknown>[]>(
     () => [
@@ -102,11 +78,6 @@ export default function UserDetailPage() {
         header: 'Date',
         cell: ({ getValue }) =>
           new Date(getValue<string>()).toLocaleDateString(),
-      },
-      {
-        accessorKey: 'account_name',
-        header: 'Account',
-        cell: ({ getValue }) => getValue<string | null>() || '-',
       },
       {
         accessorKey: 'instrument_id',
@@ -163,7 +134,9 @@ export default function UserDetailPage() {
     []
   )
 
-  if (userLoading) {
+  const isLoading = userLoading || accountsLoading
+
+  if (isLoading) {
     return (
       <div className="ds-page">
         <Spinner size="lg" center />
@@ -171,61 +144,40 @@ export default function UserDetailPage() {
     )
   }
 
-  if (userError || !user) {
-    return (
-      <div className="ds-page">
-        <Link to="/users" className="ds-back-link">
-          <IconChevronLeft size={12} /> Back to Users
-        </Link>
-        <p className="ds-text--secondary">{userError?.message || 'User not found.'}</p>
-      </div>
-    )
-  }
-
   return (
     <div className="ds-page">
-      <Link to="/users" className="ds-back-link">
-        <IconChevronLeft size={12} /> Back to Users
+      <Link to={`/users/${userId}`} className="ds-back-link">
+        <IconChevronLeft size={12} /> Back to {user?.name || `User ${userId}`}
       </Link>
       <div className="ds-page__header">
         <div className="ds-page__actions">
-          <h1 className="ds-page__title">{user.name || user.id}</h1>
-          {user.organization_name && (
-            <Badge variant="neutral">{user.organization_name}</Badge>
-          )}
+          <h1 className="ds-page__title">{account?.label || `Account ${accountId}`}</h1>
+          {account && <Badge variant="neutral">{account.currency}</Badge>}
         </div>
       </div>
 
-      <Card header="User Details">
-        <div className="ds-kv-grid">
-          <span className="ds-kv-grid__label">ID</span>
-          <span className="ds-text--mono">{user.id}</span>
-          <span className="ds-kv-grid__label">Name</span>
-          <span>{user.name || '-'}</span>
-          <span className="ds-kv-grid__label">Email</span>
-          <span>{user.email || '-'}</span>
-          <span className="ds-kv-grid__label">Organization</span>
-          <span>{user.organization_name || '-'}</span>
-          <span className="ds-kv-grid__label">Accounts</span>
-          <span>{user.account_count}</span>
-          <span className="ds-kv-grid__label">Trades</span>
-          <span>{user.trade_count}</span>
-        </div>
-      </Card>
-
-      <Card header="Accounts" className="ds-mt-xl">
-        {accountsLoading ? (
-          <Spinner size="md" center />
-        ) : accounts && accounts.length > 0 ? (
-          <DataTable
-            data={accounts}
-            columns={accountColumns}
-            onRowClick={(row) => navigate(`/users/${id}/accounts/${row.id}`)}
-          />
-        ) : (
-          <p className="ds-text--secondary">No accounts.</p>
-        )}
-      </Card>
+      {account && (
+        <Card header="Account Details">
+          <div className="ds-kv-grid">
+            <span className="ds-kv-grid__label">ID</span>
+            <span className="ds-text--mono">{account.id}</span>
+            <span className="ds-kv-grid__label">Label</span>
+            <span>{account.label}</span>
+            <span className="ds-kv-grid__label">Currency</span>
+            <span>{account.currency}</span>
+            <span className="ds-kv-grid__label">Positions</span>
+            <span>{account.position_count}</span>
+            <span className="ds-kv-grid__label">Trades</span>
+            <span>{account.trade_count}</span>
+            <span className="ds-kv-grid__label">Market Value</span>
+            <span className="ds-text--mono">
+              {account.market_value != null
+                ? `${account.market_value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ${account.currency}`
+                : '-'}
+            </span>
+          </div>
+        </Card>
+      )}
 
       <Card header="Positions" className="ds-mt-xl">
         {positionsLoading ? (
@@ -235,7 +187,7 @@ export default function UserDetailPage() {
             data={positions}
             columns={positionColumns}
             onRowClick={(row) =>
-              navigate(`/users/${id}/positions/${encodeURIComponent(row.instrument_id)}`)
+              navigate(`/users/${userId}/positions/${encodeURIComponent(row.instrument_id)}`)
             }
           />
         ) : (
@@ -251,7 +203,7 @@ export default function UserDetailPage() {
             data={trades}
             columns={tradeColumns}
             onRowClick={(row) =>
-              navigate(`/users/${id}/positions/${encodeURIComponent(row.instrument_id)}`)
+              navigate(`/users/${userId}/positions/${encodeURIComponent(row.instrument_id)}`)
             }
           />
         ) : (

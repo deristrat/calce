@@ -43,7 +43,7 @@ def _run_api(c, backend="postgres", features="", release=False, watch=False):
     flag = " --release" if release else ""
     cargo_cmd = f"run -p calce-api{flag}{features}"
     if watch:
-        c.run(f"cargo watch -x '{cargo_cmd}'", pty=True, env=env)
+        c.run("bacon --job run-long", pty=True, env=env)
     else:
         c.run(f"cargo {cargo_cmd}", pty=True, env=env)
 
@@ -97,15 +97,13 @@ def dev(c):
     c.run("docker compose up -d postgres", hide="both")
     c.run(f"cd {CALCE_DB} && uv run alembic upgrade head", hide="both")
 
-    # 2. Start API with hot-reload in background.
-    #    start_new_session=True gives cargo-watch its own process group so it
-    #    can properly SIGTERM the spawned server binary on rebuild.
+    # 2. Start API with hot-reload in background (bacon watches for changes
+    #    and restarts the server automatically via the run-long job).
     print("Starting API with hot-reload...")
     env = {"RUST_LOG": "info"}
     api_proc = subprocess.Popen(
-        ["cargo", "watch", "-x", "run -p calce-api"],
+        ["bacon", "--headless", "--job", "run-long"],
         env={**os.environ, **env},
-        start_new_session=True,
     )
 
     # 3. Start console frontend in background
@@ -114,22 +112,15 @@ def dev(c):
         ["npm", "run", "dev"],
         cwd=CALCE_CONSOLE,
         env={**os.environ},
-        start_new_session=True,
     )
 
     def _cleanup():
         for proc in [api_proc, console_proc]:
-            try:
-                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-            except (ProcessLookupError, PermissionError):
-                pass
+            proc.terminate()
             try:
                 proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
-                try:
-                    os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-                except (ProcessLookupError, PermissionError):
-                    pass
+                proc.kill()
         # Clean up any orphans still bound to our port.
         subprocess.run(
             f"lsof -ti:{API_PORT} | xargs kill -9 2>/dev/null",

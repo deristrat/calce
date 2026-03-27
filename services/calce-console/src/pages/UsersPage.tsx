@@ -71,10 +71,12 @@ export default function UsersPage() {
       {
         accessorKey: 'account_count',
         header: 'Accounts',
+        meta: { numeric: true },
       },
       {
         accessorKey: 'trade_count',
         header: 'Trades',
+        meta: { numeric: true },
       },
     ],
     []
@@ -91,11 +93,14 @@ export default function UsersPage() {
             onChange={handleOrgChange}
           >
             <option value="">All organizations</option>
-            {orgs?.map((org) => (
-              <option key={org.id} value={org.id}>
-                {org.name || org.id}
-              </option>
-            ))}
+            {orgs
+              ?.slice()
+              .sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id))
+              .map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.name || org.id}
+                </option>
+              ))}
           </select>
           <SearchInput
             value={search}

@@ -1,17 +1,30 @@
+import { useState } from 'react'
 import { useParams, Link } from 'react-router'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
+import type { ApiKeyCreated } from '../api/types'
 import { IconChevronLeft } from '../components/icons'
 import Card from '../components/Card'
 import Spinner from '../components/Spinner'
+import Badge from '../components/Badge'
+import Button from '../components/Button'
+import Input from '../components/Input'
+import Modal from '../components/Modal'
 import { usePageTitle } from '../hooks/usePageTitle'
 
 export default function OrganizationDetailPage() {
   const { id } = useParams()
+  const queryClient = useQueryClient()
 
   const { data: org, isLoading, error } = useQuery({
     queryKey: ['organization', id],
     queryFn: () => api.getOrganization(id!),
+    enabled: !!id,
+  })
+
+  const { data: apiKeysData, isLoading: keysLoading } = useQuery({
+    queryKey: ['api-keys', id],
+    queryFn: () => api.getApiKeys(id!),
     enabled: !!id,
   })
 
@@ -35,6 +48,8 @@ export default function OrganizationDetailPage() {
       </div>
     )
   }
+
+  const apiKeys = apiKeysData?.items ?? []
 
   return (
     <div className="ds-page">
@@ -61,6 +76,213 @@ export default function OrganizationDetailPage() {
           <span>{new Date(org.created_at).toLocaleDateString()}</span>
         </div>
       </Card>
+
+      <ApiKeysSection orgId={org.id} apiKeys={apiKeys} isLoading={keysLoading} queryClient={queryClient} />
     </div>
+  )
+}
+
+function ApiKeysSection({
+  orgId,
+  apiKeys,
+  isLoading,
+  queryClient,
+}: {
+  orgId: string
+  apiKeys: { id: number; name: string; key_prefix: string; expires_at: string | null; created_at: string }[]
+  isLoading: boolean
+  queryClient: ReturnType<typeof useQueryClient>
+}) {
+  const [showCreate, setShowCreate] = useState(false)
+  const [createdKey, setCreatedKey] = useState<ApiKeyCreated | null>(null)
+  const [revokeTarget, setRevokeTarget] = useState<{ id: number; name: string } | null>(null)
+
+  const revokeMutation = useMutation({
+    mutationFn: (keyId: number) => api.revokeApiKey(orgId, keyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api-keys', orgId] })
+      setRevokeTarget(null)
+    },
+  })
+
+  return (
+    <>
+      <Card
+        header={
+          <>
+            <span>API Keys</span>
+            <Button variant="outline" size="sm" onClick={() => setShowCreate(true)}>
+              Create Key
+            </Button>
+          </>
+        }
+      >
+        {isLoading ? (
+          <Spinner size="sm" center />
+        ) : apiKeys.length === 0 ? (
+          <p className="ds-text--secondary">No API keys.</p>
+        ) : (
+          <table className="ds-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Prefix</th>
+                <th>Created</th>
+                <th>Expires</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {apiKeys.map((key) => (
+                <tr key={key.id}>
+                  <td>{key.name}</td>
+                  <td><span className="ds-text--mono">{key.key_prefix}...</span></td>
+                  <td>{new Date(key.created_at).toLocaleDateString()}</td>
+                  <td>
+                    {key.expires_at ? (
+                      new Date(key.expires_at) < new Date() ? (
+                        <Badge variant="error">Expired</Badge>
+                      ) : (
+                        new Date(key.expires_at).toLocaleDateString()
+                      )
+                    ) : (
+                      <Badge variant="neutral">Never</Badge>
+                    )}
+                  </td>
+                  <td>
+                    <Button
+                      variant="danger"
+                      size="sm"
+                      onClick={() => setRevokeTarget({ id: key.id, name: key.name })}
+                    >
+                      Revoke
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </Card>
+
+      <CreateApiKeyModal
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        orgId={orgId}
+        queryClient={queryClient}
+        onCreated={setCreatedKey}
+      />
+
+      <Modal
+        open={!!createdKey}
+        onClose={() => setCreatedKey(null)}
+        title="API Key Created"
+        footer={<Button onClick={() => setCreatedKey(null)}>Done</Button>}
+      >
+        <p className="ds-text--secondary" style={{ marginBottom: 'var(--ds-space-3)' }}>
+          Copy this key now — it won't be shown again.
+        </p>
+        <code className="ds-code-block">{createdKey?.key}</code>
+      </Modal>
+
+      <Modal
+        open={!!revokeTarget}
+        onClose={() => setRevokeTarget(null)}
+        title="Revoke API Key"
+        footer={
+          <div className="ds-flex ds-flex--gap-2">
+            <Button variant="outline" onClick={() => setRevokeTarget(null)}>Cancel</Button>
+            <Button
+              variant="danger"
+              onClick={() => revokeTarget && revokeMutation.mutate(revokeTarget.id)}
+              disabled={revokeMutation.isPending}
+            >
+              {revokeMutation.isPending ? 'Revoking...' : 'Revoke'}
+            </Button>
+          </div>
+        }
+      >
+        <p>Are you sure you want to revoke the API key <strong>{revokeTarget?.name}</strong>? This cannot be undone.</p>
+      </Modal>
+    </>
+  )
+}
+
+function CreateApiKeyModal({
+  open,
+  onClose,
+  orgId,
+  queryClient,
+  onCreated,
+}: {
+  open: boolean
+  onClose: () => void
+  orgId: string
+  queryClient: ReturnType<typeof useQueryClient>
+  onCreated: (key: ApiKeyCreated) => void
+}) {
+  const [name, setName] = useState('')
+  const [expiresAt, setExpiresAt] = useState('')
+
+  const createMutation = useMutation({
+    mutationFn: () =>
+      api.createApiKey(orgId, {
+        name,
+        expires_at: expiresAt ? new Date(expiresAt + 'T23:59:59Z').toISOString() : undefined,
+      }),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['api-keys', orgId] })
+      setName('')
+      setExpiresAt('')
+      onClose()
+      onCreated(data)
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (name.trim()) createMutation.mutate()
+  }
+
+  const todayStr = new Date().toISOString().split('T')[0]
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Create API Key"
+      footer={
+        <div className="ds-flex ds-flex--gap-2">
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => { if (name.trim()) createMutation.mutate() }} disabled={!name.trim() || createMutation.isPending}>
+            {createMutation.isPending ? 'Creating...' : 'Create'}
+          </Button>
+        </div>
+      }
+    >
+      <form onSubmit={handleSubmit}>
+        <div className="ds-form-group">
+          <label className="ds-label">Name</label>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Production API"
+            autoFocus
+          />
+        </div>
+        <div className="ds-form-group">
+          <label className="ds-label">Expiry date (optional)</label>
+          <Input
+            type="date"
+            value={expiresAt}
+            onChange={(e) => setExpiresAt(e.target.value)}
+            min={todayStr}
+          />
+        </div>
+        {createMutation.error && (
+          <p className="ds-text--error">{createMutation.error.message}</p>
+        )}
+      </form>
+    </Modal>
   )
 }

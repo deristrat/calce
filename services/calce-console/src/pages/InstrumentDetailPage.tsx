@@ -47,6 +47,7 @@ export default function InstrumentDetailPage() {
       {
         accessorKey: 'price',
         header: 'Price',
+        meta: { numeric: true },
         cell: ({ getValue }) => (
           <span className="ds-text--mono">
             {getValue<number>().toFixed(2)}

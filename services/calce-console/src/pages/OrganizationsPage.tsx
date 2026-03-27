@@ -26,6 +26,7 @@ export default function OrganizationsPage() {
       {
         accessorKey: 'user_count',
         header: 'Users',
+        meta: { numeric: true },
       },
       {
         accessorKey: 'created_at',

@@ -37,6 +37,8 @@ pub struct AccountSummary {
     pub label: String,
     pub currency: String,
     pub trade_count: i64,
+    pub position_count: i64,
+    pub market_value: Option<f64>,
 }
 
 pub struct UserDataRepo {
@@ -165,11 +167,26 @@ impl UserDataRepo {
 
     pub async fn get_user_accounts(&self, external_id: &str) -> DataResult<Vec<AccountSummary>> {
         let rows = sqlx::query_as::<_, AccountSummary>(
-            "SELECT a.id, a.label, a.currency, \
-                    COUNT(t.id)::BIGINT AS trade_count \
+            "WITH account_positions AS ( \
+                 SELECT t.account_id, t.instrument_id, \
+                        SUM(t.quantity) AS net_quantity, \
+                        COUNT(t.id) AS trade_count \
+                 FROM trades t \
+                 GROUP BY t.account_id, t.instrument_id \
+             ), \
+             latest_prices AS ( \
+                 SELECT DISTINCT ON (instrument_id) instrument_id, price \
+                 FROM prices \
+                 ORDER BY instrument_id, price_date DESC \
+             ) \
+             SELECT a.id, a.label, a.currency, \
+                    COALESCE(SUM(ap.trade_count), 0)::BIGINT AS trade_count, \
+                    COUNT(ap.instrument_id)::BIGINT AS position_count, \
+                    SUM(ap.net_quantity * lp.price) AS market_value \
              FROM accounts a \
              JOIN users u ON a.user_id = u.id \
-             LEFT JOIN trades t ON t.account_id = a.id \
+             LEFT JOIN account_positions ap ON ap.account_id = a.id \
+             LEFT JOIN latest_prices lp ON lp.instrument_id = ap.instrument_id \
              WHERE u.external_id = $1 \
              GROUP BY a.id, a.label, a.currency \
              ORDER BY a.label",

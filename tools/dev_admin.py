@@ -9,9 +9,7 @@ ADMIN_EXTERNAL_ID = "admin"
 
 def ensure_admin_user(cur, conn):
     """Insert the local dev admin user and credentials. Idempotent."""
-    ph = argon2.PasswordHasher(
-        time_cost=2, memory_cost=19456, parallelism=1, type=argon2.Type.ID
-    )
+    ph = argon2.PasswordHasher(time_cost=2, memory_cost=19456, parallelism=1, type=argon2.Type.ID)
 
     cur.execute(
         "INSERT INTO users (external_id, email, name, role) VALUES (%s, %s, %s, 'admin') "

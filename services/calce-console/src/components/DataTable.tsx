@@ -5,9 +5,17 @@ import {
   flexRender,
   type ColumnDef,
   type SortingState,
+  type RowData,
 } from '@tanstack/react-table'
 import { useState } from 'react'
 import { IconSort, IconSortAsc, IconSortDesc } from './icons'
+
+declare module '@tanstack/react-table' {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  interface ColumnMeta<TData extends RowData, TValue> {
+    numeric?: boolean
+  }
+}
 
 interface DataTableProps<T> {
   data: T[]
@@ -33,26 +41,30 @@ function DataTable<T>({ data, columns, onRowClick }: DataTableProps<T>) {
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  onClick={header.column.getToggleSortingHandler()}
-                  style={{ cursor: header.column.getCanSort() ? 'pointer' : 'default' }}
-                >
-                  {flexRender(header.column.columnDef.header, header.getContext())}
-                  {header.column.getCanSort() && (
-                    <span style={{ display: 'inline-flex', marginLeft: 4, verticalAlign: 'middle' }}>
-                      {header.column.getIsSorted() === 'asc' ? (
-                        <IconSortAsc size={12} />
-                      ) : header.column.getIsSorted() === 'desc' ? (
-                        <IconSortDesc size={12} />
-                      ) : (
-                        <IconSort size={12} />
-                      )}
-                    </span>
-                  )}
-                </th>
-              ))}
+              {headerGroup.headers.map((header) => {
+                const isNumeric = header.column.columnDef.meta?.numeric
+                return (
+                  <th
+                    key={header.id}
+                    className={isNumeric ? 'ds-table__cell--numeric' : undefined}
+                    onClick={header.column.getToggleSortingHandler()}
+                    style={{ cursor: header.column.getCanSort() ? 'pointer' : 'default' }}
+                  >
+                    {flexRender(header.column.columnDef.header, header.getContext())}
+                    {header.column.getCanSort() && (
+                      <span style={{ display: 'inline-flex', marginLeft: 4, verticalAlign: 'middle' }}>
+                        {header.column.getIsSorted() === 'asc' ? (
+                          <IconSortAsc size={12} />
+                        ) : header.column.getIsSorted() === 'desc' ? (
+                          <IconSortDesc size={12} />
+                        ) : (
+                          <IconSort size={12} />
+                        )}
+                      </span>
+                    )}
+                  </th>
+                )
+              })}
             </tr>
           ))}
         </thead>
@@ -64,11 +76,14 @@ function DataTable<T>({ data, columns, onRowClick }: DataTableProps<T>) {
               onClick={() => onRowClick?.(row.original)}
               style={onRowClick ? { cursor: 'pointer' } : undefined}
             >
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
+              {row.getVisibleCells().map((cell) => {
+                const isNumeric = cell.column.columnDef.meta?.numeric
+                return (
+                  <td key={cell.id} className={isNumeric ? 'ds-table__cell--numeric' : undefined}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                )
+              })}
             </tr>
           ))}
         </tbody>

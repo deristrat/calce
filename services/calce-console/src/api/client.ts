@@ -1,5 +1,7 @@
 import type {
   AccountSummary,
+  ApiKey,
+  ApiKeyCreated,
   DataStats,
   FxRateSummary,
   Instrument,
@@ -8,6 +10,7 @@ import type {
   PaginatedResponse,
   PositionSummary,
   Price,
+  TradeSummary,
   User,
 } from "./types";
 
@@ -161,6 +164,28 @@ export const api = {
     return fetchApi<PositionSummary[]>(`/v1/data/users/${userId}/positions`);
   },
 
+  getUserTrades(userId: string): Promise<TradeSummary[]> {
+    return fetchApi<TradeSummary[]>(`/v1/data/users/${userId}/trades`);
+  },
+
+  getUserPositionTrades(userId: string, instrumentId: string): Promise<TradeSummary[]> {
+    return fetchApi<TradeSummary[]>(
+      `/v1/data/users/${userId}/positions/${encodeURIComponent(instrumentId)}/trades`,
+    );
+  },
+
+  getAccountPositions(userId: string, accountId: number): Promise<PositionSummary[]> {
+    return fetchApi<PositionSummary[]>(
+      `/v1/data/users/${userId}/accounts/${accountId}/positions`,
+    );
+  },
+
+  getAccountTrades(userId: string, accountId: number): Promise<TradeSummary[]> {
+    return fetchApi<TradeSummary[]>(
+      `/v1/data/users/${userId}/accounts/${accountId}/trades`,
+    );
+  },
+
   getFxRates(params: {
     offset?: number;
     limit?: number;
@@ -187,5 +212,22 @@ export const api = {
 
   getOrganization(orgId: string): Promise<Organization> {
     return fetchApi<Organization>(`/v1/organizations/${orgId}`);
+  },
+
+  getApiKeys(orgId: string): Promise<{ items: ApiKey[] }> {
+    return fetchApi<{ items: ApiKey[] }>(`/v1/organizations/${orgId}/api-keys`);
+  },
+
+  createApiKey(orgId: string, body: { name: string; expires_at?: string }): Promise<ApiKeyCreated> {
+    return fetchApi<ApiKeyCreated>(`/v1/organizations/${orgId}/api-keys`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  },
+
+  revokeApiKey(orgId: string, keyId: number): Promise<void> {
+    return fetchApi<void>(`/v1/organizations/${orgId}/api-keys/${keyId}`, {
+      method: "DELETE",
+    });
   },
 };

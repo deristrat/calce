@@ -72,7 +72,8 @@ pub fn generate_api_key(environment: &str, hmac_secret: &[u8]) -> (String, Strin
     let random_part = tokens::generate_token();
     let full_key = format!("{prefix}{random_part}");
     let key_hash = tokens::hmac_hash(&full_key, hmac_secret);
-    (full_key, prefix.to_owned(), key_hash)
+    let stored_prefix = format!("{prefix}{}", &random_part[..8]);
+    (full_key, stored_prefix, key_hash)
 }
 
 /// Validate a cached API key entry and build a `SecurityContext`.
@@ -89,11 +90,8 @@ pub fn validate_cached_key(cached: &CachedApiKey) -> Option<SecurityContext> {
         return None;
     }
     Some(
-        SecurityContext::new(
-            UserId::new(&cached.organization_external_id),
-            Role::Admin,
-        )
-        .with_org(cached.organization_external_id.clone()),
+        SecurityContext::new(UserId::new(&cached.organization_external_id), Role::Admin)
+            .with_org(cached.organization_external_id.clone()),
     )
 }
 
@@ -105,7 +103,8 @@ mod tests {
     fn generate_key_has_live_prefix() {
         let (key, prefix, hash) = generate_api_key("live", b"secret");
         assert!(key.starts_with("calce_live_"));
-        assert_eq!(prefix, "calce_live_");
+        assert!(prefix.starts_with("calce_live_"));
+        assert_eq!(prefix.len(), "calce_live_".len() + 8);
         assert!(!hash.is_empty());
     }
 
@@ -113,7 +112,8 @@ mod tests {
     fn generate_key_has_test_prefix() {
         let (key, prefix, _) = generate_api_key("test", b"secret");
         assert!(key.starts_with("calce_test_"));
-        assert_eq!(prefix, "calce_test_");
+        assert!(prefix.starts_with("calce_test_"));
+        assert_eq!(prefix.len(), "calce_test_".len() + 8);
     }
 
     #[test]
