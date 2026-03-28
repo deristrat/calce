@@ -165,31 +165,58 @@ impl UserDataRepo {
         Ok(TradeId::new(id))
     }
 
+    /// Lightweight lookup: just account (id → label) for a user. No aggregation.
+    pub async fn get_account_names(
+        &self,
+        external_id: &str,
+    ) -> DataResult<Vec<(i64, String)>> {
+        let rows = sqlx::query_as::<_, (i64, String)>(
+            "SELECT a.id, a.label \
+             FROM accounts a \
+             JOIN users u ON a.user_id = u.id \
+             WHERE u.external_id = $1 \
+             ORDER BY a.label",
+        )
+        .bind(external_id)
+        .fetch_all(&self.pool)
+        .await?;
+        Ok(rows)
+    }
+
     pub async fn get_user_accounts(&self, external_id: &str) -> DataResult<Vec<AccountSummary>> {
         let rows = sqlx::query_as::<_, AccountSummary>(
-            "WITH account_positions AS ( \
+            "WITH user_accounts AS ( \
+                 SELECT a.id, a.label, a.currency \
+                 FROM accounts a \
+                 JOIN users u ON a.user_id = u.id \
+                 WHERE u.external_id = $1 \
+             ), \
+             account_positions AS ( \
                  SELECT t.account_id, t.instrument_id, \
                         SUM(t.quantity) AS net_quantity, \
                         COUNT(t.id) AS trade_count \
                  FROM trades t \
+                 WHERE t.account_id IN (SELECT id FROM user_accounts) \
                  GROUP BY t.account_id, t.instrument_id \
              ), \
+             needed_instruments AS ( \
+                 SELECT DISTINCT instrument_id FROM account_positions \
+             ), \
              latest_prices AS ( \
-                 SELECT DISTINCT ON (instrument_id) instrument_id, price \
-                 FROM prices \
-                 ORDER BY instrument_id, price_date DESC \
+                 SELECT DISTINCT ON (p.instrument_id) p.instrument_id, p.price \
+                 FROM prices p \
+                 JOIN needed_instruments ni ON ni.instrument_id = p.instrument_id \
+                 ORDER BY p.instrument_id, p.price_date DESC \
              ) \
-             SELECT a.id, a.label, a.currency, \
+             SELECT ua.id, ua.label, ua.currency, \
                     COALESCE(SUM(ap.trade_count), 0)::BIGINT AS trade_count, \
                     COUNT(ap.instrument_id)::BIGINT AS position_count, \
                     SUM(ap.net_quantity * lp.price) AS market_value \
-             FROM accounts a \
-             JOIN users u ON a.user_id = u.id \
-             LEFT JOIN account_positions ap ON ap.account_id = a.id \
+             FROM user_accounts ua \
+             LEFT JOIN account_positions ap ON ap.account_id = ua.id \
              LEFT JOIN latest_prices lp ON lp.instrument_id = ap.instrument_id \
-             WHERE u.external_id = $1 \
-             GROUP BY a.id, a.label, a.currency \
-             ORDER BY a.label",
+             GROUP BY ua.id, ua.label, ua.currency \
+             ORDER BY ua.label",
         )
         .bind(external_id)
         .fetch_all(&self.pool)

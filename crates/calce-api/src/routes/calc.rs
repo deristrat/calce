@@ -338,8 +338,8 @@ async fn load_account_names(state: &AppState, user_id: &str) -> HashMap<i64, Str
         return HashMap::new();
     };
     let repo = UserDataRepo::new(pool.clone());
-    match repo.get_user_accounts(user_id).await {
-        Ok(accounts) => accounts.into_iter().map(|a| (a.id, a.label)).collect(),
+    match repo.get_account_names(user_id).await {
+        Ok(pairs) => pairs.into_iter().collect(),
         Err(_) => HashMap::new(),
     }
 }

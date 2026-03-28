@@ -194,7 +194,7 @@ export default function FxRateDetailPage() {
               aria-pressed={showReverse}
             />
             <span>
-              Reverse rate <Badge variant="neutral">{reversePair}</Badge> available — show for comparison
+              Reverse rate <Link to={`/fx-rates/${to}/${from}`}><Badge variant="neutral">{reversePair}</Badge></Link> available — show for comparison
             </span>
           </label>
         </div>
