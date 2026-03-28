@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use serde::Serialize;
 
@@ -44,13 +44,37 @@ fn check_user_access(security_ctx: &SecurityContext, user_id: &UserId) -> DataRe
 }
 
 fn dedup_subjects(subjects: &[UserId]) -> Vec<UserId> {
-    let mut seen = Vec::with_capacity(subjects.len());
-    for s in subjects {
-        if !seen.iter().any(|existing: &UserId| existing == s) {
-            seen.push(s.clone());
-        }
+    let mut seen = HashSet::with_capacity(subjects.len());
+    subjects
+        .iter()
+        .filter(|s| seen.insert(*s))
+        .cloned()
+        .collect()
+}
+
+/// Aggregate trades into position summaries, grouped by (instrument, currency).
+fn aggregate_positions<'a>(trades: impl Iterator<Item = &'a Trade>) -> Vec<PositionSummary> {
+    let mut positions: HashMap<(&str, &str), (f64, i64)> = HashMap::new();
+    for trade in trades {
+        let key = (trade.instrument_id.as_str(), trade.currency.as_str());
+        let entry = positions.entry(key).or_insert((0.0, 0));
+        entry.0 += trade.quantity.value();
+        entry.1 += 1;
     }
-    seen
+
+    let mut result: Vec<PositionSummary> = positions
+        .into_iter()
+        .map(
+            |((instrument_id, currency), (quantity, trade_count))| PositionSummary {
+                instrument_id: instrument_id.to_owned(),
+                quantity,
+                currency: currency.to_owned(),
+                trade_count,
+            },
+        )
+        .collect();
+    result.sort_by(|a, b| a.instrument_id.cmp(&b.instrument_id));
+    result
 }
 
 impl UserDataStore {
@@ -74,22 +98,22 @@ impl UserDataStore {
     pub fn infer_users(&mut self) {
         self.users = self
             .trades
-            .keys()
-            .map(|id| UserSummary {
+            .iter()
+            .map(|(id, trades)| UserSummary {
                 id: id.as_str().to_owned(),
                 email: None,
                 name: None,
                 organization_id: None,
                 organization_name: None,
-                trade_count: 0,
+                trade_count: i64::try_from(trades.len()).unwrap_or(0),
                 account_count: 0,
             })
             .collect();
     }
 
     #[must_use]
-    pub fn trades_for(&self, user_id: &UserId) -> Option<Vec<Trade>> {
-        self.trades.get(user_id).cloned()
+    pub fn trades_for(&self, user_id: &UserId) -> Option<&[Trade]> {
+        self.trades.get(user_id).map(Vec::as_slice)
     }
 
     /// Load trades for the given subjects, enforcing access control.
@@ -111,7 +135,7 @@ impl UserDataStore {
             let trades = self
                 .trades_for(subject)
                 .ok_or_else(|| DataError::NoTradesFound(subject.clone()))?;
-            all_trades.extend(trades);
+            all_trades.extend_from_slice(trades);
         }
 
         Ok(all_trades)
@@ -119,25 +143,23 @@ impl UserDataStore {
 
     /// List users visible to the caller.
     ///
-    /// Admins see all users. Regular users see only themselves.
+    /// Uses centralized access-control rules: unrestricted admins see all users,
+    /// regular users see only themselves. Org-scoped admins are filtered by
+    /// default — route handlers must add org-membership filtering if needed.
     pub fn list_users(&self, ctx: &SecurityContext) -> Vec<UserSummary> {
-        if ctx.is_admin() {
-            self.users.clone()
-        } else {
-            let id = ctx.user_id.as_str();
-            self.users.iter().filter(|u| u.id == id).cloned().collect()
-        }
+        self.users
+            .iter()
+            .filter(|u| permissions::can_access_user_data(ctx, &UserId::new(&u.id)))
+            .cloned()
+            .collect()
     }
 
     /// Look up a single user by ID, enforcing access control.
     pub fn get_user(&self, ctx: &SecurityContext, user_id: &str) -> Option<UserSummary> {
-        if ctx.is_admin() {
-            self.users.iter().find(|u| u.id == user_id).cloned()
-        } else if ctx.user_id.as_str() == user_id {
-            self.users.iter().find(|u| u.id == user_id).cloned()
-        } else {
-            None
+        if !permissions::can_access_user_data(ctx, &UserId::new(user_id)) {
+            return None;
         }
+        self.users.iter().find(|u| u.id == user_id).cloned()
     }
 
     pub fn user_count(&self) -> i64 {
@@ -155,29 +177,7 @@ impl UserDataStore {
     ) -> DataResult<Vec<PositionSummary>> {
         check_user_access(ctx, user_id)?;
         let trades = self.trades_for(user_id).unwrap_or_default();
-
-        let mut positions: HashMap<String, (f64, String, i64)> = HashMap::new();
-        for trade in &trades {
-            let entry = positions
-                .entry(trade.instrument_id.as_str().to_owned())
-                .or_insert((0.0, trade.currency.as_str().to_owned(), 0));
-            entry.0 += trade.quantity.value();
-            entry.2 += 1;
-        }
-
-        let mut result: Vec<PositionSummary> = positions
-            .into_iter()
-            .map(
-                |(instrument_id, (quantity, currency, trade_count))| PositionSummary {
-                    instrument_id,
-                    quantity,
-                    currency,
-                    trade_count,
-                },
-            )
-            .collect();
-        result.sort_by(|a, b| a.instrument_id.cmp(&b.instrument_id));
-        Ok(result)
+        Ok(aggregate_positions(trades.iter()))
     }
 
     pub fn positions_for_account(
@@ -188,32 +188,9 @@ impl UserDataStore {
     ) -> DataResult<Vec<PositionSummary>> {
         check_user_access(ctx, user_id)?;
         let trades = self.trades_for(user_id).unwrap_or_default();
-
-        let mut positions: HashMap<String, (f64, String, i64)> = HashMap::new();
-        for trade in &trades {
-            if trade.account_id.value() != account_id {
-                continue;
-            }
-            let entry = positions
-                .entry(trade.instrument_id.as_str().to_owned())
-                .or_insert((0.0, trade.currency.as_str().to_owned(), 0));
-            entry.0 += trade.quantity.value();
-            entry.2 += 1;
-        }
-
-        let mut result: Vec<PositionSummary> = positions
-            .into_iter()
-            .map(
-                |(instrument_id, (quantity, currency, trade_count))| PositionSummary {
-                    instrument_id,
-                    quantity,
-                    currency,
-                    trade_count,
-                },
-            )
-            .collect();
-        result.sort_by(|a, b| a.instrument_id.cmp(&b.instrument_id));
-        Ok(result)
+        Ok(aggregate_positions(
+            trades.iter().filter(|t| t.account_id.value() == account_id),
+        ))
     }
 
     pub fn organization_count(&self) -> i64 {
@@ -221,7 +198,7 @@ impl UserDataStore {
             .users
             .iter()
             .filter_map(|u| u.organization_id.as_deref())
-            .collect::<std::collections::HashSet<_>>()
+            .collect::<HashSet<_>>()
             .len();
         i64::try_from(count).unwrap_or(0)
     }
@@ -329,5 +306,38 @@ mod tests {
 
         let users = store.list_users(&user_ctx("bob"));
         assert!(users.is_empty());
+    }
+
+    #[test]
+    fn infer_users_sets_trade_count() {
+        let store = test_store();
+        let users = store.list_users(&admin_ctx());
+        assert_eq!(users[0].trade_count, 1);
+    }
+
+    #[test]
+    fn get_user_denies_unauthorized() {
+        let store = test_store();
+        assert!(store.get_user(&user_ctx("bob"), "alice").is_none());
+    }
+
+    #[test]
+    fn get_user_allows_self() {
+        let store = test_store();
+        let user = store.get_user(&user_ctx("alice"), "alice");
+        assert_eq!(user.unwrap().id, "alice");
+    }
+
+    #[test]
+    fn positions_for_user_aggregates_correctly() {
+        let store = test_store();
+        let positions = store
+            .positions_for_user(&admin_ctx(), &UserId::new("alice"))
+            .unwrap();
+        assert_eq!(positions.len(), 1);
+        assert_eq!(positions[0].instrument_id, "AAPL");
+        assert!((positions[0].quantity - 100.0).abs() < f64::EPSILON);
+        assert_eq!(positions[0].currency, "USD");
+        assert_eq!(positions[0].trade_count, 1);
     }
 }

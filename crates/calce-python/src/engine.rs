@@ -69,7 +69,7 @@ impl CalcEngine {
         let trades = ud.inner.trades_for(&self.user_id).ok_or_else(|| {
             NoTradesFoundError::new_err(format!("No trades found for user {}", self.user_id))
         })?;
-        let positions = aggregation::aggregate_positions(&trades, self.ctx.as_of_date)
+        let positions = aggregation::aggregate_positions(trades, self.ctx.as_of_date)
             .map_err(calce_err_to_py)?;
         market_value::value_positions(&positions, &self.ctx, &md.inner)
             .map(|outcome| MarketValueResult {
@@ -85,7 +85,7 @@ impl CalcEngine {
         let trades = ud.inner.trades_for(&self.user_id).ok_or_else(|| {
             NoTradesFoundError::new_err(format!("No trades found for user {}", self.user_id))
         })?;
-        portfolio::portfolio_report(&trades, &self.ctx, &md.inner)
+        portfolio::portfolio_report(trades, &self.ctx, &md.inner)
             .map(|outcome| PortfolioReport {
                 warnings: outcome.warnings,
                 inner: outcome.value,
