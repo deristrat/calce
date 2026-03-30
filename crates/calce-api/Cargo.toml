@@ -34,6 +34,9 @@ calce-integrations = { path = "../calce-integrations", optional = true }
 default = []
 njorda = ["dep:calce-integrations", "calce-integrations/njorda"]
 
+[lints]
+workspace = true
+
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"

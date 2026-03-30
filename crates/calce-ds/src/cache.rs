@@ -339,7 +339,9 @@ mod tests {
     #[test]
     fn bulk_insert() {
         let cache = TimeSeriesCache::<u32>::new();
-        let entries: Vec<_> = (0..100).map(|i| (i, f64::from(i), vec![f64::from(i)])).collect();
+        let entries: Vec<_> = (0..100)
+            .map(|i| (i, f64::from(i), vec![f64::from(i)]))
+            .collect();
         cache.bulk_insert(entries);
         assert_eq!(cache.len(), 100);
         assert_eq!(cache.get_current(&50), Some(50.0));

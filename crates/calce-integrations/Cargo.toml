@@ -26,3 +26,6 @@ bincode = { version = "1", optional = true }
 clap = { version = "4", features = ["derive"], optional = true }
 tracing-subscriber = { version = "0.3", optional = true }
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono"], optional = true }
+
+[lints]
+workspace = true
