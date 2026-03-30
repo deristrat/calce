@@ -189,6 +189,9 @@ async fn main() {
     fx_pubsub.start();
     tracing::info!("PubSub dispatchers started");
 
+    // Start CDC listener for live database updates.
+    let _cdc = calce_data::cdc::start_cdc(Arc::clone(&md));
+
     let sim = Arc::new(simulator::Simulator::new(Arc::clone(&md)));
 
     let state = AppState {

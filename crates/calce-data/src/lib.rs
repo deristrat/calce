@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod cdc;
 pub mod concurrent_market_data;
 pub mod config;
 pub mod error;

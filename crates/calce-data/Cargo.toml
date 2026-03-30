@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 calce-core = { path = "../calce-core", features = ["serde"] }
+calce-cdc = { path = "../calce-cdc" }
 calce-datastructs = { path = "../calce-datastructs" }
 dashmap = "6"
 sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "chrono", "json", "uuid"] }

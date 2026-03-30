@@ -1,6 +1,6 @@
 [workspace]
-members = ["crates/calce-core", "crates/calce-datastructs", "crates/calce-data", "crates/calce-integrations", "crates/calce-python", "crates/calce-api"]
-default-members = ["crates/calce-core", "crates/calce-datastructs", "crates/calce-data", "crates/calce-integrations", "crates/calce-api"]
+members = ["crates/calce-core", "crates/calce-datastructs", "crates/calce-data", "crates/calce-cdc", "crates/calce-integrations", "crates/calce-python", "crates/calce-api"]
+default-members = ["crates/calce-core", "crates/calce-datastructs", "crates/calce-data", "crates/calce-cdc", "crates/calce-integrations", "crates/calce-api"]
 resolver = "3"
 
 [workspace.lints.clippy]

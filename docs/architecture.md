@@ -15,7 +15,9 @@ Financial calculation engine for portfolio tracking, valuation, and analytics.
 ```
 calce-core    (sync, pure — domain types, calc functions, service traits, no auth)
     ↑
-calce-data    (async — data access, authorization, input assembly)
+calce-cdc     (async — Postgres logical replication, emits typed CdcEvent)
+    ↑
+calce-data    (async — data access, authorization, input assembly, CDC wiring)
     ↑
 calce-api     (async — axum HTTP handlers, extracts identity, routes to data+calc)
 

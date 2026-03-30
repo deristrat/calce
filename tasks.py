@@ -216,6 +216,31 @@ def seed_db(c, instruments=1000, users=100, trades_per_user=100, history_years=5
     )
 
 
+# ── CDC ─────────────────────────────────────────────────────────────────
+
+
+@task
+def cdc_status(c):
+    """Show CDC replication slot status and WAL retention."""
+    c.run(
+        'docker compose exec -T postgres psql -U calce -d calce -c '
+        '"SELECT slot_name, active, restart_lsn, '
+        "pg_size_pretty(pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)) AS retained "
+        'FROM pg_replication_slots;"',
+        pty=True,
+    )
+
+
+@task
+def cdc_drop_slot(c):
+    """Drop the CDC replication slot (frees retained WAL)."""
+    c.run(
+        'docker compose exec -T postgres psql -U calce -d calce -c '
+        "\"SELECT pg_drop_replication_slot('calce_cdc_slot');\"",
+        pty=True,
+    )
+
+
 # ── Njorda ──────────────────────────────────────────────────────────────
 
 

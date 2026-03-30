@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16
+    command: postgres -c wal_level=logical
     ports:
       - "5433:5432"
     environment:
