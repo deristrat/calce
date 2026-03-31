@@ -57,7 +57,6 @@ pub mod currency;
 pub mod fx_rate;
 pub mod instrument;
 pub mod money;
-pub mod organization;
 pub mod position;
 pub mod price;
 pub mod quantity;

@@ -18,7 +18,7 @@ calce-api
 
 | Crate | Responsibility | Heavy deps |
 |-------|---------------|------------|
-| `calce-core` | Domain types, service traits, calc logic, reports, accounting | None |
+| `calce-core` | Domain types, service traits, calc logic, reports | None |
 | `calce-data` | Real DB implementations of service traits | sqlx, tokio |
 | `calce-api` | HTTP server, wires data + core together | axum, tokio |
 | `calce-python` | Python bindings, wraps core | pyo3 |

@@ -8,7 +8,7 @@ use axum::Router;
 use serde::{Deserialize, Serialize};
 use tokio_stream::StreamExt;
 
-use crate::auth::require_admin;
+use crate::auth::require_admin_from_sse;
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -24,8 +24,6 @@ struct EntityUpdate {
     id: String,
 }
 
-/// EventSource doesn't support custom headers, so we also accept the JWT
-/// as a `?token=` query parameter.
 #[derive(Deserialize)]
 struct SseQuery {
     token: Option<String>,
@@ -36,25 +34,7 @@ async fn events_sse(
     Query(query): Query<SseQuery>,
     State(state): State<AppState>,
 ) -> Result<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>, ApiError> {
-    let token = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .map(String::from)
-        .or(query.token)
-        .ok_or(ApiError::Data(
-            calce_data::error::DataError::InvalidCredentials,
-        ))?;
-
-    let ctx = calce_data::auth::middleware::validate_bearer_token(
-        &token,
-        &state.auth_config,
-        state.pool.as_ref(),
-        Some(&state.api_key_cache),
-    )
-    .await
-    .map_err(|_| ApiError::Data(calce_data::error::DataError::InvalidCredentials))?;
-    require_admin(&ctx)?;
+    require_admin_from_sse(&headers, query.token, &state).await?;
 
     let entity_pubsub = state
         .entity_pubsub

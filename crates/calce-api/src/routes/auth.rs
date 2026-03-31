@@ -6,19 +6,16 @@ use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use calce_data::auth::{Role, jwt, password, tokens};
+use calce_data::auth::{
+    DUMMY_PASSWORD_HASH, GRACE_PERIOD_SECS, LOCKOUT_DURATION_MINUTES, LOCKOUT_THRESHOLD,
+    MAX_PASSWORD_LENGTH, REFRESH_TOKEN_LIFETIME_DAYS, Role, jwt, password, tokens,
+};
 use calce_data::error::DataError;
 use calce_data::queries::auth::{AuthRepo, CredentialRow};
 
 use crate::error::ApiError;
 use crate::rate_limit;
 use crate::state::AppState;
-
-const LOCKOUT_THRESHOLD: i32 = 10;
-const LOCKOUT_DURATION_MINUTES: i64 = 15;
-const REFRESH_TOKEN_LIFETIME_DAYS: i64 = 30;
-const GRACE_PERIOD_SECS: i64 = 30;
-const MAX_PASSWORD_LENGTH: usize = 128;
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
@@ -129,9 +126,7 @@ async fn login(
             (Some(c), ok)
         }
         None => {
-            // Spend comparable time hashing against a dummy to prevent timing leaks
-            let dummy_hash = "$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAgA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-            let _ = password::verify_password(&body.password, dummy_hash);
+            let _ = password::verify_password(&body.password, DUMMY_PASSWORD_HASH);
             (None, false)
         }
     };

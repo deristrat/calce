@@ -13,6 +13,20 @@ pub use middleware::AuthValidationError;
 pub const JWT_ISSUER: &str = "calce";
 pub const JWT_AUDIENCE: &str = "calce-api";
 
+// Auth policy constants — shared by API and Python bindings.
+pub const LOCKOUT_THRESHOLD: i32 = 10;
+pub const LOCKOUT_DURATION_MINUTES: i64 = 15;
+pub const REFRESH_TOKEN_LIFETIME_DAYS: i64 = 30;
+/// Grace period for refresh token reuse (seconds). Within this window,
+/// replaying an old token returns the same new token instead of revoking.
+pub const GRACE_PERIOD_SECS: i64 = 30;
+pub const MAX_PASSWORD_LENGTH: usize = 128;
+
+/// Dummy Argon2 hash for timing-safe password verification when the user
+/// doesn't exist (prevents user-enumeration via response time).
+pub const DUMMY_PASSWORD_HASH: &str =
+    "$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAgA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Role {
     Admin,

@@ -90,6 +90,33 @@ pub fn require_org_admin(ctx: &SecurityContext, target_org: &str) -> Result<(), 
     Ok(())
 }
 
+/// Extract and validate a JWT from either the `Authorization: Bearer` header
+/// or a `?token=` query parameter (needed for EventSource which can't set headers).
+/// Requires admin role.
+pub async fn require_admin_from_sse(
+    headers: &axum::http::HeaderMap,
+    query_token: Option<String>,
+    state: &AppState,
+) -> Result<(), ApiError> {
+    let token = headers
+        .get("authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|v| v.strip_prefix("Bearer "))
+        .map(String::from)
+        .or(query_token)
+        .ok_or(ApiError::Data(DataError::InvalidCredentials))?;
+
+    let ctx = middleware::validate_bearer_token(
+        &token,
+        &state.auth_config,
+        state.pool.as_ref(),
+        Some(&state.api_key_cache),
+    )
+    .await
+    .map_err(|_| ApiError::Data(DataError::InvalidCredentials))?;
+    require_admin(&ctx)
+}
+
 pub fn require_access(ctx: &SecurityContext, target: &str) -> Result<(), ApiError> {
     let target_id = UserId::new(target);
     if ctx.can_access(&target_id) {

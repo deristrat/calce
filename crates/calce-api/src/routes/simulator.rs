@@ -9,7 +9,7 @@ use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use tokio_stream::StreamExt;
 
-use crate::auth::{Auth, require_admin};
+use crate::auth::{Auth, require_admin, require_admin_from_sse};
 use crate::error::ApiError;
 use crate::simulator::{SimulatorConfig, SimulatorStats};
 use crate::state::AppState;
@@ -61,8 +61,6 @@ struct SseUpdate {
     kind: &'static str,
 }
 
-/// EventSource doesn't support custom headers, so we also accept the JWT
-/// as a `?token=` query parameter for the SSE endpoint.
 #[derive(Deserialize)]
 struct SseQuery {
     token: Option<String>,
@@ -73,27 +71,7 @@ async fn events_sse(
     Query(query): Query<SseQuery>,
     State(state): State<AppState>,
 ) -> Result<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>, ApiError> {
-    // EventSource doesn't support custom headers, so accept JWT from either
-    // the Authorization header or a ?token= query parameter.
-    let token = headers
-        .get("authorization")
-        .and_then(|v| v.to_str().ok())
-        .and_then(|v| v.strip_prefix("Bearer "))
-        .map(String::from)
-        .or(query.token)
-        .ok_or(ApiError::Data(
-            calce_data::error::DataError::InvalidCredentials,
-        ))?;
-
-    let ctx = calce_data::auth::middleware::validate_bearer_token(
-        &token,
-        &state.auth_config,
-        state.pool.as_ref(),
-        Some(&state.api_key_cache),
-    )
-    .await
-    .map_err(|_| ApiError::Data(calce_data::error::DataError::InvalidCredentials))?;
-    require_admin(&ctx)?;
+    require_admin_from_sse(&headers, query.token, &state).await?;
 
     let md = state.market_data.market_data();
 

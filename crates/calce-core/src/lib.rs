@@ -8,7 +8,6 @@
 #![deny(clippy::panic)]
 #![warn(clippy::pedantic)]
 
-pub mod accounting;
 pub mod calc;
 pub mod context;
 pub mod domain;

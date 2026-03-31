@@ -3,7 +3,11 @@ use pyo3::prelude::*;
 use uuid::Uuid;
 
 use calce_data::auth::jwt::ACCESS_TOKEN_LIFETIME_SECS;
-use calce_data::auth::{AuthConfig, Role, jwt, password, tokens};
+use calce_data::auth::{
+    AuthConfig, DUMMY_PASSWORD_HASH, GRACE_PERIOD_SECS, LOCKOUT_DURATION_MINUTES,
+    LOCKOUT_THRESHOLD, MAX_PASSWORD_LENGTH, REFRESH_TOKEN_LIFETIME_DAYS, Role, jwt, password,
+    tokens,
+};
 use calce_data::queries::auth::AuthRepo;
 
 use crate::errors::DataLoadError;
@@ -12,12 +16,6 @@ pyo3::create_exception!(calce, AuthError, pyo3::exceptions::PyException);
 pyo3::create_exception!(calce, InvalidCredentialsError, AuthError);
 pyo3::create_exception!(calce, AccountLockedError, AuthError);
 pyo3::create_exception!(calce, InvalidTokenError, AuthError);
-
-const LOCKOUT_THRESHOLD: i32 = 10;
-const LOCKOUT_DURATION_MINUTES: i64 = 15;
-const REFRESH_TOKEN_LIFETIME_DAYS: i64 = 30;
-const GRACE_PERIOD_SECS: i64 = 30;
-const MAX_PASSWORD_LENGTH: usize = 128;
 
 #[pyclass(frozen, name = "SecurityContext")]
 pub struct PySecurityContext {
@@ -97,10 +95,7 @@ impl AuthService {
                     (Some(c), ok)
                 }
                 None => {
-                    // Timing-safe: hash against a dummy so response time doesn't
-                    // reveal whether the email exists.
-                    let dummy = "$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAgA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-                    let _ = password::verify_password(password, dummy);
+                    let _ = password::verify_password(password, DUMMY_PASSWORD_HASH);
                     (None, false)
                 }
             };

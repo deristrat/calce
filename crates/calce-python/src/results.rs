@@ -191,48 +191,28 @@ impl ValueChangeSummary {
     #[getter]
     fn daily(&self) -> ValueChange {
         ValueChange {
-            inner: calce_core::calc::value_change::ValueChange {
-                current: self.inner.daily.current,
-                previous: self.inner.daily.previous,
-                change: self.inner.daily.change,
-                change_pct: self.inner.daily.change_pct,
-            },
+            inner: self.inner.daily,
         }
     }
 
     #[getter]
     fn weekly(&self) -> ValueChange {
         ValueChange {
-            inner: calce_core::calc::value_change::ValueChange {
-                current: self.inner.weekly.current,
-                previous: self.inner.weekly.previous,
-                change: self.inner.weekly.change,
-                change_pct: self.inner.weekly.change_pct,
-            },
+            inner: self.inner.weekly,
         }
     }
 
     #[getter]
     fn yearly(&self) -> ValueChange {
         ValueChange {
-            inner: calce_core::calc::value_change::ValueChange {
-                current: self.inner.yearly.current,
-                previous: self.inner.yearly.previous,
-                change: self.inner.yearly.change,
-                change_pct: self.inner.yearly.change_pct,
-            },
+            inner: self.inner.yearly,
         }
     }
 
     #[getter]
     fn ytd(&self) -> ValueChange {
         ValueChange {
-            inner: calce_core::calc::value_change::ValueChange {
-                current: self.inner.ytd.current,
-                previous: self.inner.ytd.previous,
-                change: self.inner.ytd.change,
-                change_pct: self.inner.ytd.change_pct,
-            },
+            inner: self.inner.ytd,
         }
     }
 }
@@ -382,44 +362,15 @@ impl PortfolioReport {
     #[getter]
     fn market_value(&self) -> MarketValueResult {
         MarketValueResult {
-            inner: calce_core::calc::market_value::MarketValueResult {
-                positions: self.inner.market_value.positions.clone(),
-                total: self.inner.market_value.total,
-            },
-            warnings: Vec::new(),
+            inner: self.inner.market_value.clone(),
+            warnings: self.warnings.clone(),
         }
     }
 
     #[getter]
     fn value_changes(&self) -> ValueChangeSummary {
         ValueChangeSummary {
-            inner: calce_core::calc::value_change::ValueChangeSummary {
-                market_value: self.inner.value_changes.market_value,
-                daily: calce_core::calc::value_change::ValueChange {
-                    current: self.inner.value_changes.daily.current,
-                    previous: self.inner.value_changes.daily.previous,
-                    change: self.inner.value_changes.daily.change,
-                    change_pct: self.inner.value_changes.daily.change_pct,
-                },
-                weekly: calce_core::calc::value_change::ValueChange {
-                    current: self.inner.value_changes.weekly.current,
-                    previous: self.inner.value_changes.weekly.previous,
-                    change: self.inner.value_changes.weekly.change,
-                    change_pct: self.inner.value_changes.weekly.change_pct,
-                },
-                yearly: calce_core::calc::value_change::ValueChange {
-                    current: self.inner.value_changes.yearly.current,
-                    previous: self.inner.value_changes.yearly.previous,
-                    change: self.inner.value_changes.yearly.change,
-                    change_pct: self.inner.value_changes.yearly.change_pct,
-                },
-                ytd: calce_core::calc::value_change::ValueChange {
-                    current: self.inner.value_changes.ytd.current,
-                    previous: self.inner.value_changes.ytd.previous,
-                    change: self.inner.value_changes.ytd.change,
-                    change_pct: self.inner.value_changes.ytd.change_pct,
-                },
-            },
+            inner: self.inner.value_changes,
         }
     }
 

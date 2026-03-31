@@ -10,7 +10,7 @@ use crate::services::market_data::MarketDataService;
 use super::aggregation::aggregate_positions;
 use super::market_value::{MarketValueResult, value_positions};
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ValueChange {
     pub current: Money,
@@ -20,7 +20,7 @@ pub struct ValueChange {
     pub change_pct: Option<f64>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Copy, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ValueChangeSummary {
     pub market_value: Money,

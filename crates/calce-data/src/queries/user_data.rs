@@ -50,24 +50,6 @@ impl UserDataRepo {
         Self { pool }
     }
 
-    pub async fn get_trades(&self, user_id: &UserId) -> DataResult<Vec<Trade>> {
-        let rows = sqlx::query_as::<_, TradeRow>(
-            "SELECT t.id, u.external_id AS user_id, t.account_id, i.ticker AS instrument_id, \
-                    t.quantity, t.price, t.currency, t.trade_date \
-             FROM trades t \
-             JOIN users u ON t.user_id = u.id \
-             JOIN instruments i ON t.instrument_id = i.id \
-             WHERE u.external_id = $1 ORDER BY t.trade_date, t.id",
-        )
-        .bind(user_id.as_str())
-        .fetch_all(&self.pool)
-        .await?;
-
-        rows.into_iter()
-            .map(TradeRow::try_into_domain)
-            .collect::<DataResult<Vec<_>>>()
-    }
-
     pub async fn get_all_trades(&self) -> DataResult<Vec<Trade>> {
         let rows = sqlx::query_as::<_, TradeRow>(
             "SELECT t.id, u.external_id AS user_id, t.account_id, i.ticker AS instrument_id, \
@@ -83,37 +65,6 @@ impl UserDataRepo {
         rows.into_iter()
             .map(TradeRow::try_into_domain)
             .collect::<DataResult<Vec<_>>>()
-    }
-
-    pub async fn upsert_user(&self, id: &UserId, email: Option<&str>) -> DataResult<()> {
-        sqlx::query(
-            "INSERT INTO users (external_id, email) VALUES ($1, $2) \
-             ON CONFLICT (external_id) DO NOTHING",
-        )
-        .bind(id.as_str())
-        .bind(email)
-        .execute(&self.pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn insert_account(
-        &self,
-        user_id: &UserId,
-        currency: Currency,
-        label: &str,
-    ) -> DataResult<AccountId> {
-        let id = sqlx::query_scalar::<_, i64>(
-            "INSERT INTO accounts (user_id, currency, label) \
-             VALUES ((SELECT id FROM users WHERE external_id = $1), $2, $3) \
-             RETURNING id",
-        )
-        .bind(user_id.as_str())
-        .bind(currency.as_str())
-        .bind(label)
-        .fetch_one(&self.pool)
-        .await?;
-        Ok(AccountId::new(id))
     }
 
     pub async fn list_users_with_trade_counts(&self) -> DataResult<Vec<UserRow>> {
@@ -132,37 +83,6 @@ impl UserDataRepo {
         .fetch_all(&self.pool)
         .await?;
         Ok(rows)
-    }
-
-    pub async fn count_users_and_trades(&self) -> DataResult<(i64, i64)> {
-        let row = sqlx::query_as::<_, (i64, i64)>(
-            "SELECT (SELECT COUNT(*) FROM users), (SELECT COUNT(*) FROM trades)",
-        )
-        .fetch_one(&self.pool)
-        .await?;
-        Ok(row)
-    }
-
-    pub async fn insert_trade(&self, trade: &Trade) -> DataResult<TradeId> {
-        let id = sqlx::query_scalar::<_, i64>(
-            "INSERT INTO trades (user_id, account_id, instrument_id, quantity, price, currency, trade_date) \
-             VALUES (\
-                 (SELECT id FROM users WHERE external_id = $1), \
-                 $2, \
-                 (SELECT id FROM instruments WHERE ticker = $3), \
-                 $4, $5, $6, $7) \
-             RETURNING id",
-        )
-        .bind(trade.user_id.as_str())
-        .bind(trade.account_id.value())
-        .bind(trade.instrument_id.as_str())
-        .bind(trade.quantity.value())
-        .bind(trade.price.value())
-        .bind(trade.currency.as_str())
-        .bind(trade.date)
-        .fetch_one(&self.pool)
-        .await?;
-        Ok(TradeId::new(id))
     }
 
     /// Lightweight lookup: just account (id → label) for a user. No aggregation.

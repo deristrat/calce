@@ -20,7 +20,7 @@ pub struct ValuedPosition {
     pub market_value_base: Money,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MarketValueResult {
     pub positions: Vec<ValuedPosition>,
