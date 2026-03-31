@@ -76,6 +76,7 @@ async fn main() {
     let auth_config = AuthConfig::from_env();
 
     let market_data = Arc::new(market_data);
+    let user_data = Arc::new(user_data);
     let md = market_data.market_data();
 
     // Wire PubSub to market data caches.
@@ -90,7 +91,11 @@ async fn main() {
     tracing::info!("PubSub dispatchers started");
 
     // Start CDC listener for live database updates.
-    let _cdc = calce_data::cdc::start_cdc(Arc::clone(&md), entity_pubsub.event_sender());
+    let _cdc = calce_data::cdc::start_cdc(
+        Arc::clone(&md),
+        Arc::clone(&user_data),
+        entity_pubsub.event_sender(),
+    );
 
     let sim = Arc::new(simulator::Simulator::new(Arc::clone(&md)));
     let db_sim = Arc::new(db_simulator::DbSimulator::new(
@@ -100,7 +105,7 @@ async fn main() {
 
     let state = AppState {
         market_data,
-        user_data: Arc::new(user_data),
+        user_data,
         pool: Some(pool),
         auth_config,
         api_key_cache: ApiKeyCache::new(),

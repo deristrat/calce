@@ -10,10 +10,12 @@ import SearchInput from '../components/SearchInput'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 import { usePaginatedSearch } from '../hooks/usePaginatedSearch'
 
 export default function UsersPage() {
   usePageTitle('Users')
+  useEntityEvents(['users'])
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const organizationId = searchParams.get('organization_id') || undefined

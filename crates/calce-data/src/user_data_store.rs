@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use dashmap::DashMap;
 use serde::Serialize;
 
 use crate::auth::SecurityContext;
@@ -19,10 +20,9 @@ pub struct PositionSummary {
     pub trade_count: i64,
 }
 
-#[derive(Default)]
 pub struct UserDataStore {
     trades: HashMap<UserId, Vec<Trade>>,
-    users: HashMap<UserId, UserSummary>,
+    users: DashMap<UserId, UserSummary>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -83,7 +83,10 @@ fn aggregate_positions<'a>(trades: impl Iterator<Item = &'a Trade>) -> Vec<Posit
 impl UserDataStore {
     #[must_use]
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            trades: HashMap::new(),
+            users: DashMap::new(),
+        }
     }
 
     pub fn add_trade(&mut self, trade: Trade) {
@@ -93,8 +96,24 @@ impl UserDataStore {
             .push(trade);
     }
 
-    pub fn set_users(&mut self, users: Vec<UserSummary>) {
-        self.users = users.into_iter().map(|u| (UserId::new(&u.id), u)).collect();
+    pub fn set_users(&self, users: Vec<UserSummary>) {
+        self.users.clear();
+        for u in users {
+            self.users.insert(UserId::new(&u.id), u);
+        }
+    }
+
+    /// Update name/email for a single user in the in-memory store.
+    pub fn update_user_info(&self, user_id: &str, name: Option<&str>, email: Option<&str>) {
+        let uid = UserId::new(user_id);
+        if let Some(mut user) = self.users.get_mut(&uid) {
+            if let Some(name) = name {
+                user.name = Some(name.to_owned());
+            }
+            if let Some(email) = email {
+                user.email = Some(email.to_owned());
+            }
+        }
     }
 
     #[must_use]
@@ -135,8 +154,8 @@ impl UserDataStore {
     pub fn list_users(&self, ctx: &SecurityContext) -> Vec<UserSummary> {
         self.users
             .iter()
-            .filter(|(id, _)| permissions::can_access_user_data(ctx, id))
-            .map(|(_, u)| u.clone())
+            .filter(|entry| permissions::can_access_user_data(ctx, entry.key()))
+            .map(|entry| entry.value().clone())
             .collect()
     }
 
@@ -151,7 +170,7 @@ impl UserDataStore {
         user_id: &UserId,
     ) -> DataResult<Option<UserSummary>> {
         check_user_access(ctx, user_id)?;
-        Ok(self.users.get(user_id).cloned())
+        Ok(self.users.get(user_id).map(|entry| entry.value().clone()))
     }
 
     pub fn user_count(&self) -> i64 {
@@ -188,8 +207,8 @@ impl UserDataStore {
     pub fn organization_count(&self) -> i64 {
         let count = self
             .users
-            .values()
-            .filter_map(|u| u.organization_id.as_deref())
+            .iter()
+            .filter_map(|entry| entry.value().organization_id.clone())
             .collect::<HashSet<_>>()
             .len();
         i64::try_from(count).unwrap_or(0)

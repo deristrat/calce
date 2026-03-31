@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test'
 
-const EMAIL = 'admin@calce.dev'
+const EMAIL = 'admin@njorda.se'
 const PASSWORD = 'protectme'
 
 async function login(page: Page) {
