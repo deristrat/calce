@@ -29,7 +29,8 @@ Permanent docs — keep accurate but concise:
 - `docs/architecture.md` — overall architecture, design principles, layer boundaries
 - `docs/rust-guidelines.md` — Rust conventions and architecture rationale
 - `docs/calculations/methodology.md` — calculation formulas and assumptions (`#CALC_*` tags)
-- `docs/auth.md` — authentication and authorization design
+- `docs/auth.md` — authentication (identity verification, tokens, login)
+- `docs/permissions.md` — authorization (roles, access rules, enforcement)
 
 ### Working Notes (`working_docs/`)
 

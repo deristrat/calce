@@ -1,57 +1,12 @@
-# Authentication & Authorization
+# Authentication
 
-## Principle
-
-Every route requires authentication. The only exceptions are health checks
-and similar infrastructure endpoints. Even instrument-scoped calculations
-(e.g. volatility) that aren't tied to a specific user still require the
-caller to be an authenticated user of the system.
-
-## Three Levels of Authorization
-
-1. **Authenticated** — the caller is a valid user. Required for all
-   calculation and data endpoints, including instrument-scoped ones.
-
-2. **Admin-only** — the caller must be an admin. Used for user
-   management (create, list, delete), organization endpoints, and API key
-   management.
-
-3. **User-scoped** — the caller is accessing a specific user's data
-   (portfolios, trades, market value). Requires authentication *plus*
-   an access check: can this user see that user's data?
-
-
-## User Model
-
-Every authenticated request produces a `SecurityContext` (defined in `calce-data::auth`) containing:
-
-- **user_id** — the authenticated user
-- **role** — currently `User` or `Admin`
-
-Route handlers enforce access checks via helper functions in `calce-api/src/auth.rs`:
-
-- `require_admin(ctx)` — returns 403 unless `ctx.role == Admin`
-- `require_access(ctx, target_user_id)` — returns 403 unless
-  `ctx.can_access(target)` (delegates to `calce-data::permissions`)
-
-calce-core has no auth types — it is a pure calculation engine.
-
-### Access Rules (User-Scoped)
-
-A user can access their own data. An advisor or admin can access other users'
-data. The check is `SecurityContext::can_access(target_user_id)`:
-
-- `Role::User` — can only access data where `target == self`
-- `Role::Admin` — can access any user's data
-
-This will evolve to support an advisor model where a user may be granted
-access to specific clients, but the core pattern stays the same:
-authenticate → build `SecurityContext` → pass it through to data layer →
-data layer enforces access.
+How calce verifies identity. Every route requires authentication — the only
+exceptions are health checks and similar infrastructure endpoints. For what
+authenticated users are allowed to do, see [permissions.md](permissions.md).
 
 ## Authentication Methods
 
-Two authentication methods, both producing the same `SecurityContext`:
+Two methods, both producing the same `SecurityContext`:
 
 ### 1. User Login (JWT)
 
@@ -74,9 +29,6 @@ Format: `calce_live_<random>` (or `calce_test_` for test environments).
 - Stored as HMAC-SHA256 hash — full key returned once at creation.
 - Looked up via in-memory cache (moka, 60s TTL) → DB fallback.
 - Managed via org-admin CRUD: `POST/GET/DELETE /organizations/{org_id}/api-keys`.
-- **Org-scoped**: API keys carry an `org_id` on their `SecurityContext`. The
-  permissions layer denies cross-org user-data access by default; route handlers
-  must explicitly verify org membership for user-scoped routes.
 
 ### Unified Validation Flow
 
@@ -146,8 +98,6 @@ calce-data/src/auth/
 ├── api_key.rs        — API key generation, validation, moka cache
 └── middleware.rs     — unified token validation
 
-calce-data/src/queries/auth.rs  — SQL for credentials, refresh tokens, API keys
-calce-data/src/permissions.rs   — access-control rules (unchanged)
 calce-api/src/auth.rs           — Axum extractor (thin, calls middleware)
 calce-api/src/routes/auth.rs    — POST /auth/login, POST /auth/refresh, POST /auth/logout
 calce-api/src/routes/api_keys.rs — API key CRUD
@@ -156,7 +106,6 @@ calce-api/src/rate_limit.rs     — governor rate limiter
 
 ## Database Tables
 
-- `users.role` — `"user"` or `"admin"` (default: `"user"`)
 - `user_credentials` — password hash, failed_attempts, locked_until (1:1 with users)
 - `refresh_tokens` — family_id, token_hash, superseded_at, revoked_at, expires_at
 - `api_keys` — organization_id, name, key_prefix, key_hash, expires_at, revoked_at
@@ -166,4 +115,3 @@ calce-api/src/rate_limit.rs     — governor rate limiter
 - JWT blacklist / instant revocation via pub/sub (currently TTL-based, 15-min max)
 - OAuth / social login (Google, Apple) — auth module designed for extensibility
 - Email verification + password reset
-- Advisor role: per-client access grants

@@ -25,9 +25,13 @@ Enforce data invariants at the DB level — don't rely on application validation
 
 ## Schema Management
 
-Alembic in `services/calce-db/`. Models in `services/calce-db/calce_db/models.py`.
+Schema is managed by Alembic in `services/calce-db/`, separate from the Rust application. SQLAlchemy models in `calce_db/models.py` are the source of truth for the schema.
 
 ```sh
-invoke db-reset    # wipe + migrate + seed (confirmation + 3s countdown)
-invoke db-migrate  # apply pending migrations
+invoke db-migrate    # apply migrations (run before deploying services)
+invoke db-revision   # autogenerate a new migration from model changes
+invoke db-downgrade  # roll back one migration
+invoke db-reset      # wipe and recreate (dev only)
 ```
+
+This separation enables running migrations independently of application deploys, rollbacks, and leveraging Alembic's full migration tooling.
