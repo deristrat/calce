@@ -3,9 +3,11 @@ import { api } from '../api/client'
 import StatCard from '../components/StatCard'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 
 export default function DashboardPage() {
   usePageTitle('Dashboard')
+  useEntityEvents([], { alsoInvalidate: ['stats'] })
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['stats'],
     queryFn: () => api.getStats(),

@@ -11,10 +11,12 @@ import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { usePaginatedSearch } from '../hooks/usePaginatedSearch'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 import Badge from '../components/Badge'
 
 export default function InstrumentsPage() {
   usePageTitle('Instruments')
+  useEntityEvents(['instruments'])
   const navigate = useNavigate()
   const { page, setPage, search, setSearch, debouncedSearch, offset, totalPages } =
     usePaginatedSearch(PAGE_SIZE)

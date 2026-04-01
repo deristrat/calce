@@ -15,7 +15,7 @@ import { usePaginatedSearch } from '../hooks/usePaginatedSearch'
 
 export default function UsersPage() {
   usePageTitle('Users')
-  useEntityEvents(['users'])
+  useEntityEvents(['users', 'organizations'])
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const organizationId = searchParams.get('organization_id') || undefined

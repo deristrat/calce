@@ -4,14 +4,23 @@ import { useAuth } from "../auth/AuthContext";
 import { useEventSource } from "./useEventSource";
 import type { EntityChangeEvent } from "../api/types";
 
+interface UseEntityEventsOptions {
+  /** Additional query key prefixes to invalidate when any watched event arrives. */
+  alsoInvalidate?: string[];
+}
+
 /**
  * Subscribe to entity change events via SSE and invalidate TanStack Query
  * caches when relevant entities change.
  *
  * @param tables - The table names to react to (e.g. `["users"]`).
  *                 Pass an empty array to react to all tables.
+ * @param options - Optional extra invalidation config.
  */
-export function useEntityEvents(tables: string[]) {
+export function useEntityEvents(
+  tables: string[],
+  options?: UseEntityEventsOptions,
+) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const isAdmin = user?.role === "admin";
@@ -28,6 +37,12 @@ export function useEntityEvents(tables: string[]) {
           queryClient.invalidateQueries({
             queryKey: [event.table.slice(0, -1), event.id],
           });
+        }
+        // Invalidate any additional query key prefixes requested by the caller.
+        if (options?.alsoInvalidate) {
+          for (const prefix of options.alsoInvalidate) {
+            queryClient.invalidateQueries({ queryKey: [prefix] });
+          }
         }
       }
     },

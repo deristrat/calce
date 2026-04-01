@@ -26,7 +26,7 @@ export default function UserDetailPage() {
   const [editName, setEditName] = useState('')
   const [editEmail, setEditEmail] = useState('')
 
-  useEntityEvents(['users'])
+  useEntityEvents(['users', 'trades'])
 
   const { data: user, isLoading: userLoading, error: userError } = useQuery({
     queryKey: ['user', id],
@@ -64,19 +64,19 @@ export default function UserDetailPage() {
   usePageTitle(user?.name || user?.email || id || 'User')
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
-    queryKey: ['user-accounts', id],
+    queryKey: ['accounts', { userId: id }],
     queryFn: () => api.getUserAccounts(id!),
     enabled: !!id,
   })
 
   const { data: positions, isLoading: positionsLoading } = useQuery({
-    queryKey: ['user-positions', id],
+    queryKey: ['trades', 'positions', { userId: id }],
     queryFn: () => api.getUserPositions(id!),
     enabled: !!id,
   })
 
   const { data: trades, isLoading: tradesLoading } = useQuery({
-    queryKey: ['user-trades', id],
+    queryKey: ['trades', { userId: id }],
     queryFn: () => api.getUserTrades(id!),
     enabled: !!id,
   })

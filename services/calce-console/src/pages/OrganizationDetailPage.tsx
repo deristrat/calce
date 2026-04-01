@@ -11,10 +11,12 @@ import Button from '../components/Button'
 import Input from '../components/Input'
 import Modal from '../components/Modal'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 
 export default function OrganizationDetailPage() {
   const { id } = useParams()
   const queryClient = useQueryClient()
+  useEntityEvents(['organizations', 'api_keys'])
 
   const { data: org, isLoading, error } = useQuery({
     queryKey: ['organization', id],
@@ -23,7 +25,7 @@ export default function OrganizationDetailPage() {
   })
 
   const { data: apiKeysData, isLoading: keysLoading } = useQuery({
-    queryKey: ['api-keys', id],
+    queryKey: ['api_keys', id],
     queryFn: () => api.getApiKeys(id!),
     enabled: !!id,
   })
@@ -100,7 +102,7 @@ function ApiKeysSection({
   const revokeMutation = useMutation({
     mutationFn: (keyId: number) => api.revokeApiKey(orgId, keyId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['api-keys', orgId] })
+      queryClient.invalidateQueries({ queryKey: ['api_keys', orgId] })
       setRevokeTarget(null)
     },
   })
@@ -231,7 +233,7 @@ function CreateApiKeyModal({
         expires_at: expiresAt ? new Date(expiresAt + 'T23:59:59Z').toISOString() : undefined,
       }),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['api-keys', orgId] })
+      queryClient.invalidateQueries({ queryKey: ['api_keys', orgId] })
       setName('')
       setExpiresAt('')
       onClose()

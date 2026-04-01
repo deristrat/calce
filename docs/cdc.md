@@ -38,6 +38,9 @@ A library crate that connects to Postgres logical replication and emits typed do
 | `fx_rates` | INSERT, UPDATE | `set_current_fx_rate()` |
 | `trades` | INSERT, DELETE | `insert_trade()` / `remove_trade()` |
 | `instruments` | INSERT, UPDATE | Reload instrument metadata |
+| `users` | INSERT, UPDATE, DELETE | Update `UserDataStore` + entity event |
+| `organizations` | INSERT, UPDATE, DELETE | Entity event (SSE → frontend) |
+| `accounts` | INSERT, UPDATE, DELETE | Entity event (SSE → frontend) |
 
 ## Replication slot
 
@@ -62,5 +65,5 @@ Slot name (`calce_cdc_slot`) and publication name (`calce_cdc_pub`) are fixed co
 ## Database prerequisites
 
 1. `wal_level = logical` in `postgresql.conf` (requires Postgres restart)
-2. Publication created by Alembic migration: `CREATE PUBLICATION calce_cdc_pub FOR TABLE prices, fx_rates, trades, instruments`
+2. Publication created by Alembic migration: `CREATE PUBLICATION calce_cdc_pub FOR TABLE prices, fx_rates, trades, instruments, users, organizations, accounts`
 3. Replication slot created automatically by `CdcListener` on first connect

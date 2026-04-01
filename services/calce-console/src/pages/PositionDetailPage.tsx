@@ -12,9 +12,11 @@ import PriceChart from '../components/PriceChart'
 import type { ChartMarker } from '../components/PriceChart'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 
 export default function PositionDetailPage() {
   const { userId, instrumentId } = useParams()
+  useEntityEvents(['trades'])
 
   const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ['user', userId],
@@ -23,7 +25,7 @@ export default function PositionDetailPage() {
   })
 
   const { data: positions, isLoading: positionsLoading } = useQuery({
-    queryKey: ['user-positions', userId],
+    queryKey: ['trades', 'positions', { userId }],
     queryFn: () => api.getUserPositions(userId!),
     enabled: !!userId,
   })
@@ -31,13 +33,13 @@ export default function PositionDetailPage() {
   const position = positions?.find((p) => p.instrument_id === instrumentId)
 
   const { data: trades, isLoading: tradesLoading } = useQuery({
-    queryKey: ['position-trades', userId, instrumentId],
+    queryKey: ['trades', { userId, instrumentId }],
     queryFn: () => api.getUserPositionTrades(userId!, instrumentId!),
     enabled: !!userId && !!instrumentId,
   })
 
   const { data: prices, isLoading: pricesLoading } = useQuery({
-    queryKey: ['instrument-prices', instrumentId],
+    queryKey: ['prices', { instrumentId }],
     queryFn: () => {
       const to = new Date().toISOString().slice(0, 10)
       const from = new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000)

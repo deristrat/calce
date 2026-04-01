@@ -10,14 +10,16 @@ import DataTable from '../components/DataTable'
 import PriceChart from '../components/PriceChart'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 
 export default function InstrumentDetailPage() {
   const { id } = useParams()
+  useEntityEvents(['instruments', 'prices'])
 
   const numericId = Number(id)
 
   const { data: instrument, isLoading: instrumentLoading, error: instrumentError } = useQuery({
-    queryKey: ['instrument', numericId],
+    queryKey: ['instrument', id],
     queryFn: () => api.getInstrument(numericId),
     enabled: Number.isFinite(numericId),
   })
@@ -25,7 +27,7 @@ export default function InstrumentDetailPage() {
   usePageTitle(instrument?.name ?? 'Instrument')
 
   const { data: prices, isLoading: pricesLoading } = useQuery({
-    queryKey: ['instrument-prices', instrument?.ticker],
+    queryKey: ['prices', { ticker: instrument?.ticker }],
     queryFn: () => {
       const to = new Date().toISOString().slice(0, 10)
       const from = new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000)

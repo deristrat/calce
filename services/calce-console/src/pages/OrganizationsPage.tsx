@@ -7,9 +7,11 @@ import type { Organization } from '../api/types'
 import DataTable from '../components/DataTable'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 
 export default function OrganizationsPage() {
   usePageTitle('Organizations')
+  useEntityEvents(['organizations'])
   const navigate = useNavigate()
   const { data, isLoading, error } = useQuery({
     queryKey: ['organizations'],

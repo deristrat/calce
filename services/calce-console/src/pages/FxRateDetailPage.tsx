@@ -12,6 +12,7 @@ import Pagination from '../components/Pagination'
 import PriceChart from '../components/PriceChart'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 
 interface MergedRow {
   date: string
@@ -26,6 +27,7 @@ export default function FxRateDetailPage() {
   const reversePair = `${to}/${from}`
 
   usePageTitle(pair)
+  useEntityEvents(['fx_rates'])
 
   const [showReverse, setShowReverse] = useState(false)
   const [page, setPage] = useState(1)
@@ -39,13 +41,13 @@ export default function FxRateDetailPage() {
   }, [])
 
   const { data: history, isLoading } = useQuery({
-    queryKey: ['fx-rate-history', from, to],
+    queryKey: ['fx_rates', from, to],
     queryFn: () => api.getFxRateHistory(from!, to!, dateRange),
     enabled: !!from && !!to,
   })
 
   const { data: reverseHistory } = useQuery({
-    queryKey: ['fx-rate-history', to, from],
+    queryKey: ['fx_rates', to, from],
     queryFn: () => api.getFxRateHistory(to!, from!, dateRange),
     enabled: !!from && !!to,
   })

@@ -10,11 +10,13 @@ import Badge from '../components/Badge'
 import DataTable from '../components/DataTable'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 
 export default function AccountDetailPage() {
   const { userId, accountId } = useParams()
   const navigate = useNavigate()
   const accountIdNum = Number(accountId)
+  useEntityEvents(['trades', 'accounts'])
 
   const { data: user, isLoading: userLoading } = useQuery({
     queryKey: ['user', userId],
@@ -23,7 +25,7 @@ export default function AccountDetailPage() {
   })
 
   const { data: accounts, isLoading: accountsLoading } = useQuery({
-    queryKey: ['user-accounts', userId],
+    queryKey: ['accounts', { userId }],
     queryFn: () => api.getUserAccounts(userId!),
     enabled: !!userId,
   })
@@ -31,13 +33,13 @@ export default function AccountDetailPage() {
   const account = accounts?.find((a) => a.id === accountIdNum)
 
   const { data: positions, isLoading: positionsLoading } = useQuery({
-    queryKey: ['account-positions', userId, accountId],
+    queryKey: ['trades', 'positions', { userId, accountId }],
     queryFn: () => api.getAccountPositions(userId!, accountIdNum),
     enabled: !!userId && !!accountId,
   })
 
   const { data: trades, isLoading: tradesLoading } = useQuery({
-    queryKey: ['account-trades', userId, accountId],
+    queryKey: ['trades', { userId, accountId }],
     queryFn: () => api.getAccountTrades(userId!, accountIdNum),
     enabled: !!userId && !!accountId,
   })

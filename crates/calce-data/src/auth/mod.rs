@@ -24,8 +24,7 @@ pub const MAX_PASSWORD_LENGTH: usize = 128;
 
 /// Dummy Argon2 hash for timing-safe password verification when the user
 /// doesn't exist (prevents user-enumeration via response time).
-pub const DUMMY_PASSWORD_HASH: &str =
-    "$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAgA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+pub const DUMMY_PASSWORD_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$AAAAAAAAAAAAAAAAAAAAgA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Role {

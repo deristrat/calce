@@ -1,10 +1,10 @@
 use std::convert::Infallible;
 
+use axum::Router;
 use axum::extract::{Query, State};
 use axum::http::HeaderMap;
 use axum::response::sse::{Event, Sse};
 use axum::routing::get;
-use axum::Router;
 use serde::{Deserialize, Serialize};
 use tokio_stream::StreamExt;
 
@@ -43,21 +43,20 @@ async fn events_sse(
 
     let sub = entity_pubsub.subscribe_all(256);
 
-    let stream =
-        tokio_stream::wrappers::ReceiverStream::new(sub.receiver).map(|event| {
-            let key_str = match &event {
-                calce_datastructs::pubsub::UpdateEvent::CurrentChanged { key } => key.as_str(),
-                calce_datastructs::pubsub::UpdateEvent::HistoryChanged { key } => key.as_str(),
-            };
-            let (table, id) = key_str.split_once(':').unwrap_or(("unknown", key_str));
-            let update = EntityUpdate {
-                update_type: "entity",
-                table: table.to_owned(),
-                id: id.to_owned(),
-            };
-            let data = serde_json::to_string(&update).unwrap_or_default();
-            Ok::<_, Infallible>(Event::default().event("update").data(data))
-        });
+    let stream = tokio_stream::wrappers::ReceiverStream::new(sub.receiver).map(|event| {
+        let key_str = match &event {
+            calce_datastructs::pubsub::UpdateEvent::CurrentChanged { key } => key.as_str(),
+            calce_datastructs::pubsub::UpdateEvent::HistoryChanged { key } => key.as_str(),
+        };
+        let (table, id) = key_str.split_once(':').unwrap_or(("unknown", key_str));
+        let update = EntityUpdate {
+            update_type: "entity",
+            table: table.to_owned(),
+            id: id.to_owned(),
+        };
+        let data = serde_json::to_string(&update).unwrap_or_default();
+        Ok::<_, Infallible>(Event::default().event("update").data(data))
+    });
 
     Ok(Sse::new(stream).keep_alive(
         axum::response::sse::KeepAlive::new().interval(std::time::Duration::from_secs(15)),

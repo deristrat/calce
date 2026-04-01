@@ -80,6 +80,12 @@ fn aggregate_positions<'a>(trades: impl Iterator<Item = &'a Trade>) -> Vec<Posit
     result
 }
 
+impl Default for UserDataStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UserDataStore {
     #[must_use]
     pub fn new() -> Self {

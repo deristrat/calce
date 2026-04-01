@@ -127,32 +127,47 @@ impl CdcListener {
         if rows.is_empty() {
             stream
                 .simple_query(&format!(
-                    "CREATE PUBLICATION {} FOR TABLE prices, fx_rates, trades, instruments, users",
+                    "CREATE PUBLICATION {} FOR TABLE prices, fx_rates, trades, instruments, users, organizations, accounts, api_keys",
                     self.config.publication_name,
                 ))
                 .await?;
             tracing::info!("Created publication '{}'", self.config.publication_name);
         } else {
-            // Ensure the users table is included in existing publications.
+            // Ensure all required tables are included in existing publications.
             let table_rows = stream
                 .simple_query(&format!(
                     "SELECT tablename FROM pg_publication_tables WHERE pubname = '{}'",
                     self.config.publication_name,
                 ))
                 .await?;
-            let has_users = table_rows.iter().any(|r| {
-                r.first()
-                    .and_then(Option::as_deref)
-                    .is_some_and(|name| name == "users")
-            });
-            if !has_users {
+            let existing: Vec<&str> = table_rows
+                .iter()
+                .filter_map(|r| r.first().and_then(Option::as_deref))
+                .collect();
+            let required = [
+                "prices",
+                "fx_rates",
+                "trades",
+                "instruments",
+                "users",
+                "organizations",
+                "accounts",
+                "api_keys",
+            ];
+            let missing: Vec<&str> = required
+                .iter()
+                .filter(|t| !existing.contains(*t))
+                .copied()
+                .collect();
+            if !missing.is_empty() {
+                let tables = missing.join(", ");
                 stream
                     .simple_query(&format!(
-                        "ALTER PUBLICATION {} ADD TABLE users",
-                        self.config.publication_name,
+                        "ALTER PUBLICATION {} ADD TABLE {}",
+                        self.config.publication_name, tables,
                     ))
                     .await?;
-                tracing::info!("Added users table to publication");
+                tracing::info!("Added tables to publication: {tables}");
             }
         }
         Ok(())

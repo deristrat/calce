@@ -53,29 +53,23 @@ pub fn start_cdc(
                         );
                     }
                 }
-                calce_cdc::CdcEvent::EntityChanged {
-                    table,
-                    columns,
-                    ..
-                } => {
+                calce_cdc::CdcEvent::EntityChanged { table, columns, .. } => {
                     let entity_id = columns
                         .get("external_id")
                         .or_else(|| columns.get("id"))
                         .and_then(|v| v.as_deref())
                         .unwrap_or("unknown");
 
-                    if table == "users" {
-                        if let Some(uid) = columns.get("external_id").and_then(|v| v.as_deref()) {
-                            let name = columns.get("name").and_then(|v| v.as_deref());
-                            let email = columns.get("email").and_then(|v| v.as_deref());
-                            user_data.update_user_info(uid, name, email);
-                        }
+                    if table == "users"
+                        && let Some(uid) = columns.get("external_id").and_then(|v| v.as_deref())
+                    {
+                        let name = columns.get("name").and_then(|v| v.as_deref());
+                        let email = columns.get("email").and_then(|v| v.as_deref());
+                        user_data.update_user_info(uid, name, email);
                     }
 
                     let key = format!("{table}:{entity_id}");
-                    let _ = entity_tx
-                        .send(UpdateEvent::CurrentChanged { key })
-                        .await;
+                    let _ = entity_tx.send(UpdateEvent::CurrentChanged { key }).await;
                 }
             }
         }

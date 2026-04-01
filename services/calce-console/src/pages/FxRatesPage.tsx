@@ -12,11 +12,13 @@ import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import Badge from '../components/Badge'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { useEntityEvents } from '../hooks/useEntityEvents'
 
 const DEBOUNCE_MS = 300
 
 export default function FxRatesPage() {
   usePageTitle('FX Rates')
+  useEntityEvents(['fx_rates'])
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
@@ -45,14 +47,14 @@ export default function FxRatesPage() {
   }, [search, fromFilter, toFilter, setSearchParams])
 
   const { data: allRates } = useQuery({
-    queryKey: ['fx-rates-all'],
+    queryKey: ['fx_rates'],
     queryFn: () => api.getFxRates({ limit: 200 }),
   })
 
   const offset = (page - 1) * PAGE_SIZE
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['fx-rates', { page, search: debouncedSearch, from: debouncedFrom, to: debouncedTo }],
+    queryKey: ['fx_rates', { page, search: debouncedSearch, from: debouncedFrom, to: debouncedTo }],
     queryFn: () =>
       api.getFxRates({
         offset,
