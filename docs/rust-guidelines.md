@@ -233,5 +233,6 @@ let outcome = value_positions(&positions, &ctx, &market_data).unwrap();
 
 Calculation tests are fast and focused. Integration tests verify the wiring (auth, aggregation, data flow).
 
-## Modules and crates
-Crates should expose a minimal public interface pub(crate) etc should be used to hide internals
+## Visibility
+
+Crates should expose a minimal public interface — use `pub(crate)` for internals. The workspace enables `unreachable_pub = "warn"` which catches `pub` items that aren't reachable from the crate root. For `sqlx::FromRow` structs that need `pub` fields but aren't exported, `#[allow(unreachable_pub)]` on the struct is acceptable.

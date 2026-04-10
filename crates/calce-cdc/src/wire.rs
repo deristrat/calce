@@ -27,7 +27,7 @@ impl ConnParams {
     /// # Errors
     ///
     /// Returns `CdcError::Config` if the URL format is invalid.
-    pub fn from_url(url: &str) -> Result<Self, CdcError> {
+    pub(crate) fn from_url(url: &str) -> Result<Self, CdcError> {
         let stripped = url
             .strip_prefix("postgres://")
             .or_else(|| url.strip_prefix("postgresql://"))
@@ -85,7 +85,7 @@ impl PgStream {
     /// # Errors
     ///
     /// Returns errors for TCP connection failures, auth failures, or protocol errors.
-    pub async fn connect(params: &ConnParams) -> Result<Self, CdcError> {
+    pub(crate) async fn connect(params: &ConnParams) -> Result<Self, CdcError> {
         let addr = format!("{}:{}", params.host, params.port);
         let stream = TcpStream::connect(&addr).await?;
         let mut pg = Self {
@@ -222,7 +222,7 @@ impl PgStream {
     /// # Errors
     ///
     /// Returns errors for query failures or protocol errors.
-    pub async fn simple_query(&mut self, sql: &str) -> Result<Vec<Vec<Option<String>>>, CdcError> {
+    pub(crate) async fn simple_query(&mut self, sql: &str) -> Result<Vec<Vec<Option<String>>>, CdcError> {
         let mut buf = BytesMut::new();
         frontend::query(sql, &mut buf).map_err(|e| CdcError::Protocol(e.to_string()))?;
         self.write_bytes(&buf).await?;
@@ -252,7 +252,7 @@ impl PgStream {
     ///
     /// Returns errors if the slot or publication doesn't exist, or protocol errors.
     #[allow(clippy::cast_possible_truncation)]
-    pub async fn start_replication(
+    pub(crate) async fn start_replication(
         &mut self,
         slot: &str,
         publication: &str,
@@ -308,7 +308,7 @@ impl PgStream {
     /// # Errors
     ///
     /// Returns `ConnectionLost` on CopyDone, or protocol errors.
-    pub async fn read_copy_data(&mut self) -> Result<bytes::Bytes, CdcError> {
+    pub(crate) async fn read_copy_data(&mut self) -> Result<bytes::Bytes, CdcError> {
         loop {
             let msg = self.read_message().await?;
             match msg {
@@ -327,7 +327,7 @@ impl PgStream {
     /// # Errors
     ///
     /// Returns IO errors.
-    pub async fn send_status_update(&mut self, lsn: u64) -> Result<(), CdcError> {
+    pub(crate) async fn send_status_update(&mut self, lsn: u64) -> Result<(), CdcError> {
         let payload = crate::protocol::build_status_update(lsn);
         // Build CopyData message manually: tag 'd', 4-byte length, payload
         let msg_len = (4 + payload.len()) as i32;

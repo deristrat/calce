@@ -13,12 +13,12 @@ use crate::db_simulator::DbSimulator;
 use crate::rate_limit::KeyedRateLimiter;
 use crate::simulator::Simulator;
 
-pub type PricePubSub = PubSub<InstrumentId>;
-pub type FxPubSub = PubSub<(Currency, Currency)>;
-pub type EntityPubSub = PubSub<String>;
+pub(crate) type PricePubSub = PubSub<InstrumentId>;
+pub(crate) type FxPubSub = PubSub<(Currency, Currency)>;
+pub(crate) type EntityPubSub = PubSub<String>;
 
 #[derive(Clone)]
-pub struct AppState {
+pub(crate) struct AppState {
     pub market_data: Arc<MarketDataStore>,
     pub user_data: Arc<UserDataStore>,
     pub pool: Option<PgPool>,
@@ -33,7 +33,7 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn require_pool(&self) -> Result<&PgPool, crate::error::ApiError> {
+    pub(crate) fn require_pool(&self) -> Result<&PgPool, crate::error::ApiError> {
         self.pool
             .as_ref()
             .ok_or_else(|| crate::error::ApiError::BadRequest("database required".into()))

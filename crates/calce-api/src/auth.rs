@@ -11,10 +11,10 @@ use serde_json::json;
 use crate::error::ApiError;
 use crate::state::AppState;
 
-pub struct Auth(pub SecurityContext);
+pub(crate) struct Auth(pub(crate) SecurityContext);
 
 #[derive(Debug)]
-pub enum AuthError {
+pub(crate) enum AuthError {
     MissingToken,
     InvalidToken,
 }
@@ -57,7 +57,7 @@ impl FromRequestParts<AppState> for Auth {
 }
 
 /// Require unrestricted admin (human user, not org-scoped API key).
-pub fn require_admin(ctx: &SecurityContext) -> Result<(), ApiError> {
+pub(crate) fn require_admin(ctx: &SecurityContext) -> Result<(), ApiError> {
     if ctx.is_unrestricted_admin() {
         Ok(())
     } else {
@@ -71,7 +71,7 @@ pub fn require_admin(ctx: &SecurityContext) -> Result<(), ApiError> {
 /// Require admin with access to a specific organization.
 /// Human admins pass unconditionally; org-scoped admins (API keys)
 /// must belong to the requested org.
-pub fn require_org_admin(ctx: &SecurityContext, target_org: &str) -> Result<(), ApiError> {
+pub(crate) fn require_org_admin(ctx: &SecurityContext, target_org: &str) -> Result<(), ApiError> {
     if !ctx.is_admin() {
         return Err(ApiError::Data(DataError::Unauthorized {
             requester: ctx.user_id.clone(),
@@ -93,7 +93,7 @@ pub fn require_org_admin(ctx: &SecurityContext, target_org: &str) -> Result<(), 
 /// Extract and validate a JWT from either the `Authorization: Bearer` header
 /// or a `?token=` query parameter (needed for EventSource which can't set headers).
 /// Requires admin role.
-pub async fn require_admin_from_sse(
+pub(crate) async fn require_admin_from_sse(
     headers: &axum::http::HeaderMap,
     query_token: Option<String>,
     state: &AppState,
@@ -117,7 +117,7 @@ pub async fn require_admin_from_sse(
     require_admin(&ctx)
 }
 
-pub fn require_access(ctx: &SecurityContext, target: &str) -> Result<(), ApiError> {
+pub(crate) fn require_access(ctx: &SecurityContext, target: &str) -> Result<(), ApiError> {
     let target_id = UserId::new(target);
     if ctx.can_access(&target_id) {
         Ok(())

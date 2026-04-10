@@ -4,7 +4,7 @@ use calce_core::error::CalceError;
 use calce_data::error::DataError;
 use serde_json::json;
 
-pub enum ApiError {
+pub(crate) enum ApiError {
     Data(DataError),
     Calc(CalceError),
     BadRequest(String),

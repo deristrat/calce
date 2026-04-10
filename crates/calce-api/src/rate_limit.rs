@@ -9,17 +9,17 @@ use governor::{Quota, RateLimiter};
 use crate::error::ApiError;
 
 /// Per-IP token bucket rate limiter.
-pub type KeyedRateLimiter = RateLimiter<IpAddr, DashMapStateStore<IpAddr>, DefaultClock>;
+pub(crate) type KeyedRateLimiter = RateLimiter<IpAddr, DashMapStateStore<IpAddr>, DefaultClock>;
 
 /// Create a rate limiter: 10 requests/minute per IP.
 #[must_use]
-pub fn create_auth_rate_limiter() -> Arc<KeyedRateLimiter> {
+pub(crate) fn create_auth_rate_limiter() -> Arc<KeyedRateLimiter> {
     let quota = Quota::per_minute(NonZeroU32::new(10).unwrap());
     Arc::new(RateLimiter::dashmap(quota))
 }
 
 /// Check rate limit for an IP. Returns `Err(ApiError)` with retry-after if limited.
-pub fn check_rate_limit(limiter: &KeyedRateLimiter, ip: IpAddr) -> Result<(), ApiError> {
+pub(crate) fn check_rate_limit(limiter: &KeyedRateLimiter, ip: IpAddr) -> Result<(), ApiError> {
     limiter.check_key(&ip).map_err(|not_until| {
         let wait = not_until.wait_time_from(DefaultClock::default().now());
         ApiError::RateLimited {
@@ -34,7 +34,7 @@ const TRUSTED_PROXY_HOPS: usize = 1;
 
 /// Extract client IP from X-Forwarded-For header.
 /// Skips `TRUSTED_PROXY_HOPS` entries from the right (added by GCP infrastructure).
-pub fn extract_ip(forwarded_for: Option<&str>) -> IpAddr {
+pub(crate) fn extract_ip(forwarded_for: Option<&str>) -> IpAddr {
     if let Some(xff) = forwarded_for {
         let parts: Vec<&str> = xff.rsplit(',').map(str::trim).collect();
         // Skip trusted proxy entries from the right; fall back to rightmost

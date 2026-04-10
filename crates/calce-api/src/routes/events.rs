@@ -12,7 +12,7 @@ use crate::auth::require_admin_from_sse;
 use crate::error::ApiError;
 use crate::state::AppState;
 
-pub fn routes() -> Router<AppState> {
+pub(super) fn routes() -> Router<AppState> {
     Router::new().route("/v1/events", get(events_sse))
 }
 

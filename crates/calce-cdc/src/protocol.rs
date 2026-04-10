@@ -29,7 +29,7 @@ impl ReplicationMessage {
     /// # Errors
     ///
     /// Returns `CdcError::Protocol` if the message is malformed.
-    pub fn parse(mut buf: bytes::Bytes) -> Result<Self, CdcError> {
+    pub(crate) fn parse(mut buf: bytes::Bytes) -> Result<Self, CdcError> {
         if buf.is_empty() {
             return Err(CdcError::Protocol("empty replication message".into()));
         }
@@ -124,7 +124,7 @@ impl PgOutputMessage {
     /// # Errors
     ///
     /// Returns `CdcError::Protocol` for malformed messages.
-    pub fn parse(mut buf: &[u8]) -> Result<Option<Self>, CdcError> {
+    pub(crate) fn parse(mut buf: &[u8]) -> Result<Option<Self>, CdcError> {
         if buf.is_empty() {
             return Err(CdcError::Protocol("empty pgoutput message".into()));
         }

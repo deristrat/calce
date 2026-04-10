@@ -10,7 +10,7 @@ use crate::db_simulator::{DbSimulator, DbSimulatorConfig, DbSimulatorStats};
 use crate::error::ApiError;
 use crate::state::AppState;
 
-pub fn routes() -> Router<AppState> {
+pub(super) fn routes() -> Router<AppState> {
     Router::new()
         .route("/v1/admin/db-simulator/start", post(start))
         .route("/v1/admin/db-simulator/stop", post(stop))

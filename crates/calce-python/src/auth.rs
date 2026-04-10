@@ -285,7 +285,7 @@ impl AuthService {
     }
 }
 
-pub fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
+pub(crate) fn register(parent: &Bound<'_, PyModule>) -> PyResult<()> {
     parent.add_class::<AuthService>()?;
     parent.add_class::<PySecurityContext>()?;
     parent.add_class::<PyTokenPair>()?;

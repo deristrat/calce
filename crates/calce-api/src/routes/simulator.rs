@@ -14,7 +14,7 @@ use crate::error::ApiError;
 use crate::simulator::{SimulatorConfig, SimulatorStats};
 use crate::state::AppState;
 
-pub fn routes() -> Router<AppState> {
+pub(super) fn routes() -> Router<AppState> {
     Router::new()
         .route("/v1/admin/simulator/start", post(start))
         .route("/v1/admin/simulator/stop", post(stop))

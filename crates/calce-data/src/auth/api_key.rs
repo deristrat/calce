@@ -158,7 +158,6 @@ mod tests {
     async fn cache_insert_and_get() {
         let cache = ApiKeyCache::new();
         let entry = CachedApiKey {
-            organization_id: 1,
             organization_external_id: "org1".into(),
             expires_at: None,
             revoked_at: None,
@@ -172,7 +171,6 @@ mod tests {
     async fn cache_evict() {
         let cache = ApiKeyCache::new();
         let entry = CachedApiKey {
-            organization_id: 1,
             organization_external_id: "org1".into(),
             expires_at: None,
             revoked_at: None,

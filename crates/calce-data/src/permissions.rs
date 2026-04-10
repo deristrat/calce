@@ -13,7 +13,7 @@ use calce_core::domain::user::UserId;
 ///   verify org membership with a DB lookup before granting access
 /// - A regular user can only access their own data
 #[must_use]
-pub fn can_access_user_data(ctx: &SecurityContext, target: &UserId) -> bool {
+pub(crate) fn can_access_user_data(ctx: &SecurityContext, target: &UserId) -> bool {
     if ctx.role == Role::Admin && ctx.org_id.is_none() {
         return true;
     }

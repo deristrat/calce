@@ -18,30 +18,30 @@ use crate::rate_limit;
 use crate::state::AppState;
 
 #[derive(Deserialize)]
-pub struct LoginRequest {
+pub(crate) struct LoginRequest {
     pub email: String,
     pub password: String,
 }
 
 #[derive(Deserialize)]
-pub struct RefreshRequest {
+pub(crate) struct RefreshRequest {
     pub refresh_token: String,
 }
 
 #[derive(Deserialize)]
-pub struct LogoutRequest {
+pub(crate) struct LogoutRequest {
     pub refresh_token: String,
 }
 
 #[derive(Serialize)]
-pub struct TokenResponse {
+pub(crate) struct TokenResponse {
     pub access_token: String,
     pub refresh_token: String,
     pub token_type: &'static str,
     pub expires_in: u64,
 }
 
-pub fn routes() -> Router<AppState> {
+pub(crate) fn routes() -> Router<AppState> {
     Router::new()
         .route("/auth/login", post(login))
         .route("/auth/refresh", post(refresh))

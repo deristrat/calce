@@ -29,7 +29,7 @@ use crate::auth::{self, Auth};
 use crate::error::ApiError;
 use crate::state::AppState;
 
-pub fn routes() -> Router<AppState> {
+pub(super) fn routes() -> Router<AppState> {
     Router::new()
         .route("/v1/version", get(version))
         .route("/v1/users/{user_id}/market-value", get(market_value))
