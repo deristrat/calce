@@ -48,7 +48,7 @@ pub enum DataError {
 impl DataError {
     /// Convert a sqlx error into a `Conflict` if it's a unique or FK violation,
     /// otherwise fall through to a generic `Sqlx` error.
-    pub fn from_constraint_violation(err: SqlxError, entity: &str, id: &str) -> Self {
+    pub(crate) fn from_constraint_violation(err: SqlxError, entity: &str, id: &str) -> Self {
         if let SqlxError::Database(ref db_err) = err {
             if db_err.is_unique_violation() {
                 return Self::Conflict(format!("{entity} '{id}' already exists"));

@@ -67,7 +67,7 @@ impl UserDataRepo {
             .collect::<DataResult<Vec<_>>>()
     }
 
-    pub async fn list_users_with_trade_counts(&self) -> DataResult<Vec<UserRow>> {
+    pub(crate) async fn list_users_with_trade_counts(&self) -> DataResult<Vec<UserRow>> {
         let rows = sqlx::query_as::<_, UserRow>(
             "SELECT u.external_id, u.email, u.name, \
                     o.external_id AS organization_id, o.name AS organization_name, \
@@ -252,7 +252,7 @@ impl UserDataRepo {
 }
 
 #[derive(sqlx::FromRow)]
-pub struct UserRow {
+pub(crate) struct UserRow {
     pub external_id: String,
     pub email: Option<String>,
     pub name: Option<String>,

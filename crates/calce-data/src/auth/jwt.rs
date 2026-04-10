@@ -11,7 +11,7 @@ use super::{JWT_AUDIENCE, JWT_ISSUER, Role, SecurityContext};
 pub const ACCESS_TOKEN_LIFETIME_SECS: u64 = 900;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
+pub(crate) struct Claims {
     pub sub: String,
     pub role: String,
     pub iss: String,
@@ -74,7 +74,7 @@ pub fn decode_access_token(
 /// # Panics
 ///
 /// Panics if the env var is missing or contains invalid data.
-pub fn load_keys_from_env() -> (EncodingKey, DecodingKey) {
+pub(crate) fn load_keys_from_env() -> (EncodingKey, DecodingKey) {
     let b64 = std::env::var("CALCE_JWT_PRIVATE_KEY").expect("CALCE_JWT_PRIVATE_KEY must be set");
     let pkcs8_der = base64::engine::general_purpose::STANDARD
         .decode(b64)
@@ -83,7 +83,7 @@ pub fn load_keys_from_env() -> (EncodingKey, DecodingKey) {
 }
 
 /// Generate an ephemeral Ed25519 key pair (dev/test use only).
-pub fn generate_ephemeral_keys() -> (EncodingKey, DecodingKey) {
+pub(crate) fn generate_ephemeral_keys() -> (EncodingKey, DecodingKey) {
     let rng = ring::rand::SystemRandom::new();
     let pkcs8_bytes = ring::signature::Ed25519KeyPair::generate_pkcs8(&rng)
         .expect("failed to generate Ed25519 key pair");

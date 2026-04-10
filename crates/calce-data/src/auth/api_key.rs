@@ -17,8 +17,7 @@ const CACHE_TTL: Duration = Duration::from_secs(60);
 
 /// Cached result of an API key lookup.
 #[derive(Clone, Debug)]
-pub struct CachedApiKey {
-    pub organization_id: i64,
+pub(crate) struct CachedApiKey {
     pub organization_external_id: String,
     pub expires_at: Option<DateTime<Utc>>,
     pub revoked_at: Option<DateTime<Utc>>,
@@ -40,11 +39,11 @@ impl ApiKeyCache {
         ApiKeyCache { inner: cache }
     }
 
-    pub async fn get(&self, key_hash: &str) -> Option<Arc<CachedApiKey>> {
+    pub(crate) async fn get(&self, key_hash: &str) -> Option<Arc<CachedApiKey>> {
         self.inner.get(key_hash).await
     }
 
-    pub async fn insert(&self, key_hash: String, entry: CachedApiKey) {
+    pub(crate) async fn insert(&self, key_hash: String, entry: CachedApiKey) {
         self.inner.insert(key_hash, Arc::new(entry)).await;
     }
 
@@ -80,7 +79,7 @@ pub fn generate_api_key(environment: &str, hmac_secret: &[u8]) -> (String, Strin
 ///
 /// API keys get admin role scoped to their organization via `org_id`.
 /// The permissions layer denies cross-org access for org-scoped admins.
-pub fn validate_cached_key(cached: &CachedApiKey) -> Option<SecurityContext> {
+pub(crate) fn validate_cached_key(cached: &CachedApiKey) -> Option<SecurityContext> {
     if cached.revoked_at.is_some() {
         return None;
     }
@@ -126,7 +125,6 @@ mod tests {
     #[test]
     fn validate_rejects_revoked() {
         let cached = CachedApiKey {
-            organization_id: 1,
             organization_external_id: "org1".into(),
             expires_at: None,
             revoked_at: Some(Utc::now()),
@@ -137,7 +135,6 @@ mod tests {
     #[test]
     fn validate_rejects_expired() {
         let cached = CachedApiKey {
-            organization_id: 1,
             organization_external_id: "org1".into(),
             expires_at: Some(Utc::now() - chrono::Duration::hours(1)),
             revoked_at: None,
@@ -148,7 +145,6 @@ mod tests {
     #[test]
     fn validate_accepts_valid_key() {
         let cached = CachedApiKey {
-            organization_id: 1,
             organization_external_id: "org1".into(),
             expires_at: None,
             revoked_at: None,

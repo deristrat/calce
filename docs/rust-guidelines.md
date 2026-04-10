@@ -2,21 +2,6 @@
 
 Coding conventions and patterns specific to this codebase. Add to this as patterns emerge.
 
-## Workspace Dependency Rules
-
-See [architecture.md](architecture.md) for the full crate structure and diagram.
-
-- `calce-core` never depends on DB or async runtimes. It stays pure and fast to compile.
-- Service traits (`MarketDataService`, `UserDataService`) are defined in `calce-core`. `calce-data` implements them with real databases.
-- `calce-python` depends only on `calce-core`, keeping the cdylib small and free of DB deps.
-- `calce-api` is the only crate that depends on both `calce-core` and `calce-data`.
-
-## Market Data Loading
-
-`MarketDataBuilder` (calce-data) accumulates prices, FX rates, and instrument metadata, then `ConcurrentMarketData::from_builder()` materialises it into a lock-free concurrent store. This is used both at startup (Postgres bulk-load) and in tests.
-
-Calc functions take `&dyn MarketDataService`, satisfied by `ConcurrentMarketData` at runtime and by `TestMarketData` (calce-core) in unit tests.
-
 ## Domain Types Are Data Carriers
 
 Domain types (`domain/`) hold data and nothing more. They provide:
@@ -247,3 +232,6 @@ let outcome = value_positions(&positions, &ctx, &market_data).unwrap();
 ```
 
 Calculation tests are fast and focused. Integration tests verify the wiring (auth, aggregation, data flow).
+
+## Modules and crates
+Crates should expose a minimal public interface pub(crate) etc should be used to hide internals

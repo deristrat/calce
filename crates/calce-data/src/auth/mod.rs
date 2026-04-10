@@ -8,10 +8,8 @@ use calce_core::domain::user::UserId;
 
 use crate::permissions;
 
-pub use middleware::AuthValidationError;
-
-pub const JWT_ISSUER: &str = "calce";
-pub const JWT_AUDIENCE: &str = "calce-api";
+pub(crate) const JWT_ISSUER: &str = "calce";
+pub(crate) const JWT_AUDIENCE: &str = "calce-api";
 
 // Auth policy constants — shared by API and Python bindings.
 pub const LOCKOUT_THRESHOLD: i32 = 10;

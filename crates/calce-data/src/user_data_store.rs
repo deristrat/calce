@@ -110,7 +110,7 @@ impl UserDataStore {
     }
 
     /// Update name/email for a single user in the in-memory store.
-    pub fn update_user_info(&self, user_id: &str, name: Option<&str>, email: Option<&str>) {
+    pub(crate) fn update_user_info(&self, user_id: &str, name: Option<&str>, email: Option<&str>) {
         let uid = UserId::new(user_id);
         if let Some(mut user) = self.users.get_mut(&uid) {
             if let Some(name) = name {

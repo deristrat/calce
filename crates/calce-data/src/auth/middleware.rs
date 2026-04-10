@@ -33,7 +33,6 @@ pub async fn validate_bearer_token(
         // Cache miss — look up in DB
         if let Ok(Some(row)) = AuthRepo::find_api_key_by_hash(pool, &key_hash).await {
             let entry = CachedApiKey {
-                organization_id: row.organization_id,
                 organization_external_id: row.organization_external_id.clone(),
                 expires_at: row.expires_at,
                 revoked_at: row.revoked_at,

@@ -35,7 +35,8 @@ pub struct RefreshTokenRow {
 }
 
 #[derive(Debug, sqlx::FromRow)]
-pub struct ApiKeyRow {
+#[allow(dead_code)] // sqlx::FromRow deserializes all columns
+pub(crate) struct ApiKeyRow {
     pub id: i64,
     pub organization_id: i64,
     pub organization_external_id: String,
@@ -266,7 +267,7 @@ impl AuthRepo {
     }
 
     /// Look up an API key by its HMAC hash, joining organization info.
-    pub async fn find_api_key_by_hash(
+    pub(crate) async fn find_api_key_by_hash(
         pool: &PgPool,
         key_hash: &str,
     ) -> DataResult<Option<ApiKeyRow>> {
