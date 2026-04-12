@@ -172,20 +172,15 @@ Don't use `unsafe` to skip trivial checks. The cost of safe validation on small 
 
 ## No Panics in Production Code
 
-Production code must never panic. Enforce with crate-level deny lints:
-
-```rust
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
-```
+Production code must never panic. Enforced workspace-wide via `clippy::unwrap_used`, `clippy::expect_used`, and `clippy::panic` (all `deny`).
 
 Use `Result`/`Option` propagation (`?`) for all fallible operations, including cache deserialization, parsing, and external data.
 
-**Exceptions where panicking is acceptable:**
+**Exceptions** (use targeted `#[allow(...)]` with a justification comment):
 
 - **`main()` / startup** — if configuration required to operate the system is missing or invalid (env vars, DB connection, port binding), panicking with a clear message is fine. There's nothing useful the server can do without these.
 - **Validated constructors** — `Currency::new("USD")` panics on invalid input, but is only used with known-valid constants. Document with `# Panics`. The fallible `try_new()` exists for runtime data.
+- **Infallible operations** — `write!` to `String`, `NonZeroU32::new(10)`, HMAC key init.
 - **Test code** — `.unwrap()` / `.expect()` in `#[cfg(test)]` modules are fine.
 
 For anything that processes runtime data (user input, files, cache, external APIs), always return errors — never panic.
@@ -233,6 +228,17 @@ let outcome = value_positions(&positions, &ctx, &market_data).unwrap();
 
 Calculation tests are fast and focused. Integration tests verify the wiring (auth, aggregation, data flow).
 
-## Visibility
+## Visibility and Lints
 
-Crates should expose a minimal public interface — use `pub(crate)` for internals. The workspace enables `unreachable_pub = "warn"` which catches `pub` items that aren't reachable from the crate root. For `sqlx::FromRow` structs that need `pub` fields but aren't exported, `#[allow(unreachable_pub)]` on the struct is acceptable.
+Crates should expose a minimal public interface — use `pub(crate)` for internals.
+
+Workspace lints (in root `Cargo.toml`, inherited by all crates):
+
+- `clippy::all` + `clippy::pedantic` — broad code quality
+- `clippy::unwrap_used`, `expect_used`, `panic` — deny panics in production code
+- `unreachable_pub` — catches `pub` items not reachable from the crate root
+- `warnings = "deny"` — all warnings are errors
+
+Pedantic lints we allow workspace-wide: `module_name_repetitions`, `missing_errors_doc`, `missing_panics_doc`, `must_use_candidate`.
+
+For `sqlx::FromRow` structs that need `pub` fields but aren't exported, `#[allow(unreachable_pub)]` on the struct is acceptable.

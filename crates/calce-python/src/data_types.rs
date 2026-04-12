@@ -105,6 +105,7 @@ impl PyPricePoint {
     }
 }
 
+#[allow(clippy::struct_field_names)] // Python API — *_count is clear for consumers
 #[pyclass(frozen, name = "DataStats")]
 pub struct PyDataStats {
     #[pyo3(get)]

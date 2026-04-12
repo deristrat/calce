@@ -15,16 +15,16 @@ pub type Lsn = u64;
 // Layer 1: Replication stream framing
 // =============================================================================
 
-/// A message from the replication stream (inside CopyData).
+/// A message from the replication stream (inside `CopyData`).
 pub(crate) enum ReplicationMessage {
     /// WAL data containing a pgoutput message.
     XLogData { wal_end: Lsn, data: bytes::Bytes },
-    /// Server heartbeat; we must reply if requested.
+    /// Server heartbeat (`KeepAlive`); we must reply if requested.
     KeepAlive { wal_end: Lsn, reply_requested: bool },
 }
 
 impl ReplicationMessage {
-    /// Parse from the raw bytes inside a CopyData message.
+    /// Parse from the raw bytes inside a `CopyData` message.
     ///
     /// # Errors
     ///
@@ -58,7 +58,7 @@ impl ReplicationMessage {
     }
 }
 
-/// Build a `StandbyStatusUpdate` message to send inside CopyData.
+/// Build a `StandbyStatusUpdate` message to send inside `CopyData`.
 pub(crate) fn build_status_update(lsn: Lsn) -> bytes::Bytes {
     let mut buf = BytesMut::with_capacity(34);
     buf.put_u8(b'r');
@@ -117,7 +117,7 @@ pub(crate) enum TupleValue {
 }
 
 impl PgOutputMessage {
-    /// Parse a pgoutput message from the XLogData payload.
+    /// Parse a pgoutput message from the `XLogData` payload.
     ///
     /// Returns `Ok(None)` for message types we don't handle (Truncate, Origin, etc.).
     ///
@@ -196,6 +196,7 @@ fn parse_relation(buf: &mut &[u8]) -> Result<PgOutputMessage, CdcError> {
     let _replica_identity = buf.get_u8();
     let num_columns = buf.get_i16();
 
+    #[allow(clippy::cast_sign_loss)] // Postgres column count is non-negative
     let mut columns = Vec::with_capacity(num_columns.max(0) as usize);
     for _ in 0..num_columns {
         ensure_remaining_slice(buf, 1, "column flags")?;

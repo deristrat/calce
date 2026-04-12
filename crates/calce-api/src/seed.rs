@@ -10,6 +10,7 @@ use calce_data::MarketDataBuilder;
 use calce_data::user_data_store::{UserDataStore, UserSummary};
 use chrono::{Datelike, NaiveDate};
 
+#[allow(clippy::expect_used)] // known-valid seed constants
 fn date(y: i32, m: u32, d: u32) -> NaiveDate {
     NaiveDate::from_ymd_opt(y, m, d).expect("valid seed date")
 }

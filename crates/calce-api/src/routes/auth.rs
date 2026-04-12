@@ -63,6 +63,7 @@ fn validate_email(email: &str) -> Result<(), ApiError> {
     if at_count != 1 {
         return Err(ApiError::BadRequest("Invalid email address".into()));
     }
+    #[allow(clippy::unwrap_used)] // at_count == 1 guarantees split_once succeeds
     let (local, domain) = email.split_once('@').unwrap();
     if local.is_empty() || domain.is_empty() || !domain.contains('.') {
         return Err(ApiError::BadRequest("Invalid email address".into()));
@@ -120,15 +121,12 @@ async fn login(
 
     // Timing-safe: always run a password hash comparison even when the user
     // doesn't exist, so the response time doesn't reveal valid emails.
-    let (cred, password_ok) = match cred {
-        Some(c) => {
-            let ok = password::verify_password(&body.password, &c.password_hash).is_ok();
-            (Some(c), ok)
-        }
-        None => {
-            let _ = password::verify_password(&body.password, DUMMY_PASSWORD_HASH);
-            (None, false)
-        }
+    let (cred, password_ok) = if let Some(c) = cred {
+        let ok = password::verify_password(&body.password, &c.password_hash).is_ok();
+        (Some(c), ok)
+    } else {
+        let _ = password::verify_password(&body.password, DUMMY_PASSWORD_HASH);
+        (None, false)
     };
 
     let cred = match (cred, password_ok) {

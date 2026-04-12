@@ -13,6 +13,7 @@ pub(crate) type KeyedRateLimiter = RateLimiter<IpAddr, DashMapStateStore<IpAddr>
 
 /// Create a rate limiter: 10 requests/minute per IP.
 #[must_use]
+#[allow(clippy::unwrap_used)] // NonZeroU32::new(10) is always Some
 pub(crate) fn create_auth_rate_limiter() -> Arc<KeyedRateLimiter> {
     let quota = Quota::per_minute(NonZeroU32::new(10).unwrap());
     Arc::new(RateLimiter::dashmap(quota))

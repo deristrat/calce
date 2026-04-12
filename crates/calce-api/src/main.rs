@@ -41,6 +41,7 @@ fn build_router(state: AppState) -> Router {
         .with_state(state)
 }
 
+#[allow(clippy::expect_used)] // startup — server cannot operate without DB
 async fn create_postgres_service() -> (MarketDataStore, UserDataStore, PgPool) {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://calce:calce@localhost:5433/calce".into());
@@ -56,6 +57,7 @@ async fn create_postgres_service() -> (MarketDataStore, UserDataStore, PgPool) {
     (market_data, user_data, pool)
 }
 
+#[allow(clippy::expect_used, clippy::unwrap_used)] // startup
 #[tokio::main]
 async fn main() {
     dotenvy::dotenv().ok();

@@ -111,6 +111,7 @@ impl AuthConfig {
     ///
     /// Panics if either variable is missing or invalid. Use a `.env` file
     /// in the project root for local development (loaded via `dotenvy`).
+    #[allow(clippy::expect_used)] // startup — server cannot operate without secrets
     pub fn from_env() -> Self {
         let (encoding_key, decoding_key) = jwt::load_keys_from_env();
 

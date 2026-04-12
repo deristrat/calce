@@ -257,6 +257,7 @@ impl Simulator {
 /// if even, decrease by 0.01. This makes prices oscillate without drift.
 pub(crate) fn nudge(value: f64) -> f64 {
     // Extract second decimal digit: floor(value * 100) mod 10
+    #[allow(clippy::cast_possible_truncation)]
     let cents = (value * 100.0).floor() as i64;
     let second_decimal = (cents % 10).unsigned_abs();
     if second_decimal % 2 == 1 {

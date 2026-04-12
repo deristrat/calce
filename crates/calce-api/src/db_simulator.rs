@@ -3,7 +3,7 @@
 //! Unlike the [`crate::simulator`] which writes directly to the in-memory
 //! cache, this simulator writes prices and FX rates to Postgres. The CDC
 //! listener then picks up the WAL changes and propagates them back through
-//! the cache → PubSub → SSE pipeline.
+//! the cache → `PubSub` → SSE pipeline.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};

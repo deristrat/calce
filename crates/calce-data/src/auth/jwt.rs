@@ -74,6 +74,7 @@ pub fn decode_access_token(
 /// # Panics
 ///
 /// Panics if the env var is missing or contains invalid data.
+#[allow(clippy::expect_used)] // startup — server cannot operate without valid keys
 pub(crate) fn load_keys_from_env() -> (EncodingKey, DecodingKey) {
     let b64 = std::env::var("CALCE_JWT_PRIVATE_KEY").expect("CALCE_JWT_PRIVATE_KEY must be set");
     let pkcs8_der = base64::engine::general_purpose::STANDARD
@@ -83,6 +84,7 @@ pub(crate) fn load_keys_from_env() -> (EncodingKey, DecodingKey) {
 }
 
 /// Generate an ephemeral Ed25519 key pair (dev/test use only).
+#[allow(clippy::expect_used)] // dev/test only — system RNG failure is unrecoverable
 pub(crate) fn generate_ephemeral_keys() -> (EncodingKey, DecodingKey) {
     let rng = ring::rand::SystemRandom::new();
     let pkcs8_bytes = ring::signature::Ed25519KeyPair::generate_pkcs8(&rng)
@@ -90,6 +92,7 @@ pub(crate) fn generate_ephemeral_keys() -> (EncodingKey, DecodingKey) {
     keys_from_pkcs8(pkcs8_bytes.as_ref())
 }
 
+#[allow(clippy::expect_used)] // called from startup paths only
 fn keys_from_pkcs8(pkcs8_der: &[u8]) -> (EncodingKey, DecodingKey) {
     let key_pair =
         ring::signature::Ed25519KeyPair::from_pkcs8(pkcs8_der).expect("invalid Ed25519 PKCS#8 DER");
@@ -99,6 +102,7 @@ fn keys_from_pkcs8(pkcs8_der: &[u8]) -> (EncodingKey, DecodingKey) {
     (encoding_key, decoding_key)
 }
 
+#[allow(clippy::expect_used)] // system clock before unix epoch is unrecoverable
 fn now_secs() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

@@ -18,12 +18,14 @@ pub fn generate_token() -> String {
 /// Uses a server-side secret so that a DB leak alone is insufficient
 /// to verify tokens offline.
 #[must_use]
+#[allow(clippy::expect_used)] // HMAC-SHA256 accepts any key length
 pub fn hmac_hash(token: &str, secret: &[u8]) -> String {
     let mut mac = HmacSha256::new_from_slice(secret).expect("HMAC accepts any key length");
     mac.update(token.as_bytes());
     hex_encode(&mac.finalize().into_bytes())
 }
 
+#[allow(clippy::unwrap_used)] // write! to String is infallible
 fn hex_encode(bytes: &[u8]) -> String {
     use std::fmt::Write;
     let mut s = String::with_capacity(bytes.len() * 2);

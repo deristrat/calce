@@ -37,6 +37,7 @@ impl MarketData {
     /// # Panics
     ///
     /// Panics if the builder has not been materialised via [`ensure_ready`].
+    #[allow(clippy::panic)] // documented panic — programming error if called before ensure_ready
     pub fn as_service(&self) -> &dyn MarketDataService {
         match &self.inner {
             MarketDataInner::Builder(_) => {

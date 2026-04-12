@@ -91,7 +91,7 @@ pub(crate) fn require_org_admin(ctx: &SecurityContext, target_org: &str) -> Resu
 }
 
 /// Extract and validate a JWT from either the `Authorization: Bearer` header
-/// or a `?token=` query parameter (needed for EventSource which can't set headers).
+/// or a `?token=` query parameter (needed for `EventSource` which can't set headers).
 /// Requires admin role.
 pub(crate) async fn require_admin_from_sse(
     headers: &axum::http::HeaderMap,

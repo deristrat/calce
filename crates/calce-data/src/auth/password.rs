@@ -7,6 +7,7 @@ const MEMORY_COST_KIB: u32 = 19_456; // 19 MiB
 const TIME_COST: u32 = 2;
 const PARALLELISM: u32 = 1;
 
+#[allow(clippy::expect_used)] // compile-time-known valid params
 fn argon2_instance() -> Argon2<'static> {
     let params =
         Params::new(MEMORY_COST_KIB, TIME_COST, PARALLELISM, None).expect("valid argon2 params");

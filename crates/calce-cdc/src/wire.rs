@@ -1,8 +1,8 @@
-//! Low-level PostgreSQL wire protocol client with replication support.
+//! Low-level Postgres wire protocol client with replication support.
 //!
 //! Connects over raw TCP with `replication=database` in the startup message,
 //! bypassing `tokio-postgres` (which doesn't expose replication mode). Uses
-//! `postgres-protocol` for message encoding/decoding.
+//! [`postgres_protocol`] for message encoding/decoding.
 
 use bytes::{Buf, BufMut, BytesMut};
 use postgres_protocol::authentication;
@@ -69,10 +69,10 @@ impl ConnParams {
     }
 }
 
-/// A PostgreSQL connection in logical replication mode.
+/// A Postgres connection in logical replication mode.
 ///
 /// Speaks the wire protocol over raw TCP with `replication=database` set in the
-/// startup message. Supports simple queries and CopyBoth streaming for logical
+/// startup message. Supports simple queries and `CopyBoth` streaming for logical
 /// replication.
 pub(crate) struct PgStream {
     stream: TcpStream,
@@ -231,11 +231,9 @@ impl PgStream {
         loop {
             let msg = self.read_message().await?;
             match msg {
-                backend::Message::RowDescription(_) | backend::Message::CommandComplete(_) => {}
                 backend::Message::DataRow(body) => {
                     rows.push(parse_data_row(&body));
                 }
-                backend::Message::EmptyQueryResponse => {}
                 backend::Message::ReadyForQuery(_) => return Ok(rows),
                 backend::Message::ErrorResponse(body) => return Err(extract_error(&body)),
                 _ => {}
@@ -245,13 +243,13 @@ impl PgStream {
 
     // -- Replication streaming --------------------------------------------------
 
-    /// Start logical replication. After this, use [`read_copy_data`] and
-    /// [`send_status_update`] to stream changes.
+    /// Start logical replication. After this, use `read_copy_data` and
+    /// `send_status_update` to stream changes.
     ///
     /// # Errors
     ///
     /// Returns errors if the slot or publication doesn't exist, or protocol errors.
-    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_sign_loss)]
     pub(crate) async fn start_replication(
         &mut self,
         slot: &str,
@@ -303,11 +301,11 @@ impl PgStream {
         }
     }
 
-    /// Read the next CopyData message from the replication stream.
+    /// Read the next `CopyData` message from the replication stream.
     ///
     /// # Errors
     ///
-    /// Returns `ConnectionLost` on CopyDone, or protocol errors.
+    /// Returns `ConnectionLost` on `CopyDone`, or protocol errors.
     pub(crate) async fn read_copy_data(&mut self) -> Result<bytes::Bytes, CdcError> {
         loop {
             let msg = self.read_message().await?;
@@ -327,6 +325,7 @@ impl PgStream {
     /// # Errors
     ///
     /// Returns IO errors.
+    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
     pub(crate) async fn send_status_update(&mut self, lsn: u64) -> Result<(), CdcError> {
         let payload = crate::protocol::build_status_update(lsn);
         // Build CopyData message manually: tag 'd', 4-byte length, payload
@@ -375,7 +374,7 @@ impl PgStream {
 
 // -- Helpers ------------------------------------------------------------------
 
-/// Parse column values from a DataRow message body.
+/// Parse column values from a `DataRowBody`.
 fn parse_data_row(body: &backend::DataRowBody) -> Vec<Option<String>> {
     use fallible_iterator::FallibleIterator;
 
@@ -394,7 +393,7 @@ fn parse_data_row(body: &backend::DataRowBody) -> Vec<Option<String>> {
     row
 }
 
-/// Extract the primary error message from a Postgres ErrorResponse.
+/// Extract the primary error message from a Postgres `ErrorResponse`.
 fn extract_error(body: &backend::ErrorResponseBody) -> CdcError {
     use fallible_iterator::FallibleIterator;
     let mut message = String::from("postgres error");

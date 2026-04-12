@@ -111,7 +111,7 @@ impl Trade {
 
     #[getter]
     fn id(&self) -> Option<i64> {
-        self.inner.id.map(|id| id.value())
+        self.inner.id.map(calce_core::domain::trade::TradeId::value)
     }
 
     #[getter]
@@ -155,7 +155,7 @@ impl Trade {
         let id_part = self
             .inner
             .id
-            .map_or(String::new(), |id| format!("id={}, ", id));
+            .map_or(String::new(), |id| format!("id={id}, "));
         format!(
             "Trade({id_part}user_id=\"{}\", instrument_id=\"{}\", quantity={}, price={}, currency=\"{}\", date={})",
             self.inner.user_id,

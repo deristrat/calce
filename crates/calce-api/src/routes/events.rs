@@ -45,8 +45,8 @@ async fn events_sse(
 
     let stream = tokio_stream::wrappers::ReceiverStream::new(sub.receiver).map(|event| {
         let key_str = match &event {
-            calce_datastructs::pubsub::UpdateEvent::CurrentChanged { key } => key.as_str(),
-            calce_datastructs::pubsub::UpdateEvent::HistoryChanged { key } => key.as_str(),
+            calce_datastructs::pubsub::UpdateEvent::CurrentChanged { key }
+            | calce_datastructs::pubsub::UpdateEvent::HistoryChanged { key } => key.as_str(),
         };
         let (table, id) = key_str.split_once(':').unwrap_or(("unknown", key_str));
         let update = EntityUpdate {

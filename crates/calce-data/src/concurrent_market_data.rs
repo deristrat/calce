@@ -163,14 +163,11 @@ impl ConcurrentMarketData {
             .into_iter()
             .map(|(from, to)| {
                 let hist = self.fx_rates.get_history(&(from, to));
-                let (count, latest) = hist
-                    .as_deref()
-                    .map(|h| {
-                        let count = h.iter().filter(|x| !x.is_nan()).count();
-                        let latest = h.iter().rposition(|x| !x.is_nan()).map(|i| h[i]);
-                        (count, latest)
-                    })
-                    .unwrap_or((0, None));
+                let (count, latest) = hist.as_deref().map_or((0, None), |h| {
+                    let count = h.iter().filter(|x| !x.is_nan()).count();
+                    let latest = h.iter().rposition(|x| !x.is_nan()).map(|i| h[i]);
+                    (count, latest)
+                });
                 (from, to, count, latest)
             })
             .collect();
@@ -183,7 +180,7 @@ impl ConcurrentMarketData {
     }
 
     /// Return FX rate history for a currency pair within a date range.
-    #[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss)]
+    #[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss, clippy::cast_possible_truncation)]
     pub fn get_fx_rate_history_range(
         &self,
         from_ccy: Currency,
@@ -226,13 +223,13 @@ impl ConcurrentMarketData {
 
     // -- Notification wiring -------------------------------------------------
 
-    /// Wire a price notification sender (for PubSub integration).
+    /// Wire a price notification sender (for `PubSub` integration).
     /// Must be called before any writes if notifications are desired.
     pub fn enable_price_notifications(&self, tx: mpsc::Sender<UpdateEvent<InstrumentId>>) {
         let _ = self.prices.set_notifier(tx);
     }
 
-    /// Wire an FX rate notification sender (for PubSub integration).
+    /// Wire an FX rate notification sender (for `PubSub` integration).
     /// Must be called before any writes if notifications are desired.
     pub fn enable_fx_notifications(&self, tx: mpsc::Sender<UpdateEvent<(Currency, Currency)>>) {
         let _ = self.fx_rates.set_notifier(tx);

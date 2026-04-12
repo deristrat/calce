@@ -89,15 +89,12 @@ impl AuthService {
                 .await
                 .map_err(|e| AuthError::new_err(format!("Database error: {e}")))?;
 
-            let (cred, password_ok) = match cred {
-                Some(c) => {
-                    let ok = password::verify_password(password, &c.password_hash).is_ok();
-                    (Some(c), ok)
-                }
-                None => {
-                    let _ = password::verify_password(password, DUMMY_PASSWORD_HASH);
-                    (None, false)
-                }
+            let (cred, password_ok) = if let Some(c) = cred {
+                let ok = password::verify_password(password, &c.password_hash).is_ok();
+                (Some(c), ok)
+            } else {
+                let _ = password::verify_password(password, DUMMY_PASSWORD_HASH);
+                (None, false)
             };
 
             let cred = match (cred, password_ok) {

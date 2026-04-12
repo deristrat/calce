@@ -132,13 +132,13 @@ impl DataService {
         let currency = Currency::try_new(base_currency)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
         let currency_py = crate::domain::Currency { inner: currency };
-        CalcEngine::create(
+        Ok(CalcEngine::create(
             py,
             &currency_py,
             as_of_date,
             user_id,
             self.market_data.clone_ref(py),
             self.user_data.clone_ref(py),
-        )
+        ))
     }
 }

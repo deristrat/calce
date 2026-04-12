@@ -19,6 +19,4 @@ Core Rust library — no DB or async dependencies. Fast to compile, easy to test
 
 ## Lint Config
 
-Defined in `lib.rs`:
-- `#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]`
-- `#![warn(clippy::pedantic)]`
+Inherited from workspace `Cargo.toml` — see `docs/rust-guidelines.md` for details.

@@ -8,7 +8,7 @@ use calce_core::domain::user::UserId;
 /// Can the authenticated user access the target user's data?
 ///
 /// Rules:
-/// - Unrestricted admin (human, no org_id) can access any user's data
+/// - Unrestricted admin (human, no `org_id`) can access any user's data
 /// - Org-scoped admin (API key) is denied here — route handlers must
 ///   verify org membership with a DB lookup before granting access
 /// - A regular user can only access their own data

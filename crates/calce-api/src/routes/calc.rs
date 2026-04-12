@@ -186,6 +186,7 @@ async fn volatility(
 
 // ── Data exploration ──────────────────────────────────────────────────
 
+#[allow(clippy::similar_names)] // stats/state are distinct concepts
 async fn data_stats(
     Auth(_ctx): Auth,
     State(state): State<AppState>,

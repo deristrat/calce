@@ -9,14 +9,16 @@ pyo3::create_exception!(calce, CurrencyMismatchError, CalceError);
 pyo3::create_exception!(calce, InsufficientDataError, CalceError);
 pyo3::create_exception!(calce, DataLoadError, CalceError);
 
+#[allow(clippy::needless_pass_by_value)] // used as .map_err(calce_err_to_py)
 pub(crate) fn calce_err_to_py(err: calce_core::error::CalceError) -> PyErr {
     use calce_core::error::CalceError as E;
     match err {
         E::PriceNotFound { .. } => PriceNotFoundError::new_err(err.to_string()),
         E::FxRateNotFound { .. } => FxRateNotFoundError::new_err(err.to_string()),
-        E::CurrencyMismatch(_) => CurrencyMismatchError::new_err(err.to_string()),
+        E::CurrencyMismatch(_) | E::CurrencyConflict { .. } => {
+            CurrencyMismatchError::new_err(err.to_string())
+        }
         E::InsufficientData { .. } => InsufficientDataError::new_err(err.to_string()),
-        E::CurrencyConflict { .. } => CurrencyMismatchError::new_err(err.to_string()),
     }
 }
 

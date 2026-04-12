@@ -47,8 +47,7 @@ impl CdcListener {
                 return;
             }
             match self.run_once().await {
-                Ok(()) => return,
-                Err(CdcError::ChannelClosed) => return,
+                Ok(()) | Err(CdcError::ChannelClosed) => return,
                 Err(e) => {
                     tracing::warn!("CDC error: {e}, reconnecting in {backoff:?}");
                     tokio::time::sleep(backoff).await;
@@ -395,7 +394,7 @@ async fn load_instrument_map(stream: &mut PgStream) -> Result<HashMap<i64, Strin
     Ok(map)
 }
 
-/// Parse a PostgreSQL LSN string like `"0/1A2B3C4D"` into a `u64`.
+/// Parse a `PostgreSQL` LSN string like `"0/1A2B3C4D"` into a `u64`.
 fn parse_lsn(s: &str) -> Lsn {
     let (hi, lo) = s.split_once('/').unwrap_or(("0", s));
     let hi = u64::from_str_radix(hi, 16).unwrap_or(0);

@@ -306,7 +306,7 @@ impl AuthRepo {
         Ok(rows)
     }
 
-    /// Revoke an API key (soft delete). Returns the key_hash for cache eviction.
+    /// Revoke an API key (soft delete). Returns the `key_hash` for cache eviction.
     pub async fn revoke_api_key(
         pool: &PgPool,
         key_id: i64,
@@ -329,7 +329,7 @@ impl AuthRepo {
     }
 
     /// Revoke a token family by refresh token hash (for logout).
-    /// Returns the family_id if found, None if the token doesn't exist.
+    /// Returns the `family_id` if found, `None` if the token doesn't exist.
     pub async fn revoke_family_by_token_hash(
         pool: &PgPool,
         token_hash: &str,

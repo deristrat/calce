@@ -30,14 +30,14 @@ impl CalcEngine {
         user_id: &str,
         market_data: Py<MarketData>,
         user_data: Py<UserData>,
-    ) -> PyResult<Self> {
+    ) -> Self {
         market_data.borrow_mut(py).ensure_ready();
-        Ok(CalcEngine {
+        CalcEngine {
             ctx: CalculationContext::new(base_currency.inner, as_of_date),
             user_id: UserId::new(user_id),
             market_data,
             user_data,
-        })
+        }
     }
 }
 
@@ -52,7 +52,7 @@ impl CalcEngine {
         user_id: &str,
         market_data: Py<MarketData>,
         user_data: Py<UserData>,
-    ) -> PyResult<Self> {
+    ) -> Self {
         Self::create(
             py,
             base_currency,
@@ -96,8 +96,8 @@ impl CalcEngine {
     /// Compute historical realized volatility for an instrument.
     ///
     /// Args:
-    ///     instrument_id: Instrument ticker/identifier.
-    ///     lookback_days: Calendar days of history (default 1095 = 3 years).
+    ///     `instrument_id`: Instrument ticker/identifier.
+    ///     `lookback_days`: Calendar days of history (default 1095 = 3 years).
     #[pyo3(signature = (instrument_id, lookback_days = 1095))]
     fn volatility(
         &self,
