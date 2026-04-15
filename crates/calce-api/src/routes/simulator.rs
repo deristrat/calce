@@ -9,7 +9,9 @@ use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use tokio_stream::StreamExt;
 
-use crate::auth::{Auth, require_admin, require_admin_from_sse};
+use calce_data::auth::authz::require_admin;
+
+use crate::auth::{Auth, require_admin_from_sse};
 use crate::error::ApiError;
 use crate::simulator::{SimulatorConfig, SimulatorStats};
 use crate::state::AppState;

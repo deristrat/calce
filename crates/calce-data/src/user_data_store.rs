@@ -3,9 +3,8 @@ use std::collections::{HashMap, HashSet};
 use dashmap::DashMap;
 use serde::Serialize;
 
-use crate::auth::SecurityContext;
+use crate::auth::{SecurityContext, authz};
 use crate::error::{DataError, DataResult};
-use crate::permissions;
 use calce_core::domain::account::AccountId;
 use calce_core::domain::currency::Currency;
 use calce_core::domain::instrument::InstrumentId;
@@ -37,7 +36,7 @@ pub struct UserSummary {
 }
 
 fn check_user_access(security_ctx: &SecurityContext, user_id: &UserId) -> DataResult<()> {
-    if !permissions::can_access_user_data(security_ctx, user_id) {
+    if !authz::can_access_user_data(security_ctx, user_id) {
         return Err(DataError::Unauthorized {
             requester: security_ctx.user_id.clone(),
             target: user_id.clone(),
@@ -160,7 +159,7 @@ impl UserDataStore {
     pub fn list_users(&self, ctx: &SecurityContext) -> Vec<UserSummary> {
         self.users
             .iter()
-            .filter(|entry| permissions::can_access_user_data(ctx, entry.key()))
+            .filter(|entry| authz::can_access_user_data(ctx, entry.key()))
             .map(|entry| entry.value().clone())
             .collect()
     }

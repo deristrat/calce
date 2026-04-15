@@ -12,11 +12,11 @@ Postgres-backed storage and the data stores that the API layer consumes.
 - `queries/user_data.rs` — `UserDataRepo`: SQL for users, accounts, trades (reads + CRUD)
 - `queries/auth.rs` — `AuthRepo`: SQL for credentials, refresh tokens
 - `auth/mod.rs` — `SecurityContext`, `Role`, `AuthConfig`
+- `auth/authz.rs` — access-control rules and `require_*` guards
 - `auth/jwt.rs` — EdDSA JWT encode/decode
 - `auth/password.rs` — Argon2id hash/verify
 - `auth/tokens.rs` — secure token generation, HMAC-SHA256 hashing
 - `auth/middleware.rs` — unified token validation (JWT + API key fallback)
-- `permissions.rs` — `can_access_user_data()`: access-control rules
 - `error.rs` — `DataError` enum: auth, not-found, DB, constraint violations
 - `config.rs` — `create_pool()`
 

@@ -1,12 +1,11 @@
 pub mod api_key;
+pub mod authz;
 pub mod jwt;
 pub mod middleware;
 pub mod password;
 pub mod tokens;
 
 use calce_core::domain::user::UserId;
-
-use crate::permissions;
 
 pub(crate) const JWT_ISSUER: &str = "calce";
 pub(crate) const JWT_AUDIENCE: &str = "calce-api";
@@ -74,10 +73,10 @@ impl SecurityContext {
         }
     }
 
-    /// Delegates to [`permissions::can_access_user_data`].
+    /// Delegates to [`authz::can_access_user_data`].
     #[must_use]
     pub fn can_access(&self, target: &UserId) -> bool {
-        permissions::can_access_user_data(self, target)
+        authz::can_access_user_data(self, target)
     }
 
     #[must_use]

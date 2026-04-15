@@ -2,9 +2,8 @@ use axum::extract::FromRequestParts;
 use axum::http::StatusCode;
 use axum::http::request::Parts;
 use axum::response::{IntoResponse, Response};
-use calce_core::domain::user::UserId;
 use calce_data::auth::SecurityContext;
-use calce_data::auth::middleware;
+use calce_data::auth::{authz, middleware};
 use calce_data::error::DataError;
 use serde_json::json;
 
@@ -56,40 +55,6 @@ impl FromRequestParts<AppState> for Auth {
     }
 }
 
-/// Require unrestricted admin (human user, not org-scoped API key).
-pub(crate) fn require_admin(ctx: &SecurityContext) -> Result<(), ApiError> {
-    if ctx.is_unrestricted_admin() {
-        Ok(())
-    } else {
-        Err(ApiError::Data(DataError::Unauthorized {
-            requester: ctx.user_id.clone(),
-            target: UserId::new("*"),
-        }))
-    }
-}
-
-/// Require admin with access to a specific organization.
-/// Human admins pass unconditionally; org-scoped admins (API keys)
-/// must belong to the requested org.
-pub(crate) fn require_org_admin(ctx: &SecurityContext, target_org: &str) -> Result<(), ApiError> {
-    if !ctx.is_admin() {
-        return Err(ApiError::Data(DataError::Unauthorized {
-            requester: ctx.user_id.clone(),
-            target: UserId::new(target_org),
-        }));
-    }
-    // Org-scoped admin: must match the target org
-    if let Some(ref org_id) = ctx.org_id
-        && org_id != target_org
-    {
-        return Err(ApiError::Data(DataError::Unauthorized {
-            requester: ctx.user_id.clone(),
-            target: UserId::new(target_org),
-        }));
-    }
-    Ok(())
-}
-
 /// Extract and validate a JWT from either the `Authorization: Bearer` header
 /// or a `?token=` query parameter (needed for `EventSource` which can't set headers).
 /// Requires admin role.
@@ -114,17 +79,6 @@ pub(crate) async fn require_admin_from_sse(
     )
     .await
     .map_err(|_| ApiError::Data(DataError::InvalidCredentials))?;
-    require_admin(&ctx)
-}
-
-pub(crate) fn require_access(ctx: &SecurityContext, target: &str) -> Result<(), ApiError> {
-    let target_id = UserId::new(target);
-    if ctx.can_access(&target_id) {
-        Ok(())
-    } else {
-        Err(ApiError::Data(DataError::Unauthorized {
-            requester: ctx.user_id.clone(),
-            target: target_id,
-        }))
-    }
+    authz::require_admin(&ctx)?;
+    Ok(())
 }

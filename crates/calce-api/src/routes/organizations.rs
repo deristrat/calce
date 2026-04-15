@@ -1,9 +1,10 @@
 use axum::extract::{Path, State};
 use axum::routing::get;
 use axum::{Json, Router};
+use calce_data::auth::authz;
 use calce_data::queries::user_data::{Organization, UserDataRepo};
 
-use crate::auth::{self, Auth};
+use crate::auth::Auth;
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -25,7 +26,7 @@ async fn list_organizations(
     Auth(ctx): Auth,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Organization>>, ApiError> {
-    auth::require_admin(&ctx)?;
+    authz::require_admin(&ctx)?;
     let orgs = repo(&state)?.find_all_organizations().await?;
     Ok(Json(orgs))
 }
@@ -35,7 +36,7 @@ async fn get_organization(
     State(state): State<AppState>,
     Path(org_id): Path<String>,
 ) -> Result<Json<Organization>, ApiError> {
-    auth::require_admin(&ctx)?;
+    authz::require_admin(&ctx)?;
     let org = repo(&state)?.get_organization(&org_id).await?;
     Ok(Json(org))
 }

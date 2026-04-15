@@ -5,10 +5,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 use calce_data::auth::api_key;
+use calce_data::auth::authz;
 use calce_data::error::DataError;
 use calce_data::queries::auth::{ApiKeyListRow, AuthRepo};
 
-use crate::auth::{self, Auth};
+use crate::auth::Auth;
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -53,7 +54,7 @@ async fn create_api_key(
     Path(org_id): Path<String>,
     Json(body): Json<CreateApiKeyRequest>,
 ) -> Result<Json<CreateApiKeyResponse>, ApiError> {
-    auth::require_org_admin(&ctx, &org_id)?;
+    authz::require_org_admin(&ctx, &org_id)?;
 
     let pool = state.require_pool()?;
 
@@ -89,7 +90,7 @@ async fn list_api_keys(
     State(state): State<AppState>,
     Path(org_id): Path<String>,
 ) -> Result<Json<ApiKeyListResponse>, ApiError> {
-    auth::require_org_admin(&ctx, &org_id)?;
+    authz::require_org_admin(&ctx, &org_id)?;
 
     let pool = state.require_pool()?;
     let items = AuthRepo::list_api_keys(pool, &org_id).await?;
@@ -101,7 +102,7 @@ async fn revoke_api_key(
     State(state): State<AppState>,
     Path((org_id, key_id)): Path<(String, i64)>,
 ) -> Result<Json<serde_json::Value>, ApiError> {
-    auth::require_org_admin(&ctx, &org_id)?;
+    authz::require_org_admin(&ctx, &org_id)?;
 
     let pool = state.require_pool()?;
 

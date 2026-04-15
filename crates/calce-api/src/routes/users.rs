@@ -2,11 +2,12 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Json, Router};
+use calce_data::auth::authz;
 use calce_data::error::DataError;
 use calce_data::queries::user_data::{User, UserDataRepo};
 use serde::Deserialize;
 
-use crate::auth::{self, Auth};
+use crate::auth::Auth;
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -31,7 +32,7 @@ async fn list_users(
     Auth(ctx): Auth,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<User>>, ApiError> {
-    auth::require_admin(&ctx)?;
+    authz::require_admin(&ctx)?;
     let users = repo(&state)?.find_all_users().await?;
     Ok(Json(users))
 }
@@ -48,7 +49,7 @@ async fn create_user(
     State(state): State<AppState>,
     Json(body): Json<CreateUserRequest>,
 ) -> Result<(StatusCode, Json<User>), ApiError> {
-    auth::require_admin(&ctx)?;
+    authz::require_admin(&ctx)?;
     let user = repo(&state)?
         .create_user(
             &body.external_id,
@@ -64,7 +65,7 @@ async fn get_user(
     State(state): State<AppState>,
     Path(user_id): Path<String>,
 ) -> Result<Json<User>, ApiError> {
-    auth::require_access(&ctx, &user_id)?;
+    authz::require_access(&ctx, &user_id)?;
     let user = repo(&state)?.get_user(&user_id).await?;
     Ok(Json(user))
 }
@@ -81,10 +82,10 @@ async fn update_user(
     Path(user_id): Path<String>,
     Json(body): Json<UpdateUserRequest>,
 ) -> Result<Json<User>, ApiError> {
-    auth::require_access(&ctx, &user_id)?;
+    authz::require_access(&ctx, &user_id)?;
     // Email changes require admin privileges.
     if body.email.is_some() {
-        auth::require_admin(&ctx)?;
+        authz::require_admin(&ctx)?;
     }
     let user = repo(&state)?
         .update_user(&user_id, body.name.as_deref(), body.email.as_deref())
@@ -97,7 +98,7 @@ async fn delete_user(
     State(state): State<AppState>,
     Path(user_id): Path<String>,
 ) -> Result<StatusCode, ApiError> {
-    auth::require_admin(&ctx)?;
+    authz::require_admin(&ctx)?;
     let deleted = repo(&state)?.delete_user(&user_id).await?;
     if deleted {
         Ok(StatusCode::NO_CONTENT)

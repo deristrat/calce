@@ -222,7 +222,10 @@ impl PgStream {
     /// # Errors
     ///
     /// Returns errors for query failures or protocol errors.
-    pub(crate) async fn simple_query(&mut self, sql: &str) -> Result<Vec<Vec<Option<String>>>, CdcError> {
+    pub(crate) async fn simple_query(
+        &mut self,
+        sql: &str,
+    ) -> Result<Vec<Vec<Option<String>>>, CdcError> {
         let mut buf = BytesMut::new();
         frontend::query(sql, &mut buf).map_err(|e| CdcError::Protocol(e.to_string()))?;
         self.write_bytes(&buf).await?;
@@ -249,7 +252,11 @@ impl PgStream {
     /// # Errors
     ///
     /// Returns errors if the slot or publication doesn't exist, or protocol errors.
-    #[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_possible_truncation,
+        clippy::cast_possible_wrap,
+        clippy::cast_sign_loss
+    )]
     pub(crate) async fn start_replication(
         &mut self,
         slot: &str,

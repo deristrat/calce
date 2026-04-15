@@ -180,7 +180,11 @@ impl ConcurrentMarketData {
     }
 
     /// Return FX rate history for a currency pair within a date range.
-    #[allow(clippy::cast_possible_wrap, clippy::cast_sign_loss, clippy::cast_possible_truncation)]
+    #[allow(
+        clippy::cast_possible_wrap,
+        clippy::cast_sign_loss,
+        clippy::cast_possible_truncation
+    )]
     pub fn get_fx_rate_history_range(
         &self,
         from_ccy: Currency,

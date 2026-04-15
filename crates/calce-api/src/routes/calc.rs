@@ -25,7 +25,9 @@ use serde::{Deserialize, Serialize};
 
 const DEFAULT_PAGE_SIZE: usize = 50;
 
-use crate::auth::{self, Auth};
+use calce_data::auth::authz;
+
+use crate::auth::Auth;
 use crate::error::ApiError;
 use crate::state::AppState;
 
@@ -284,7 +286,7 @@ async fn user_accounts(
     State(state): State<AppState>,
     Path(user_id): Path<String>,
 ) -> Result<Json<Vec<AccountSummary>>, ApiError> {
-    auth::require_admin(&ctx)?;
+    authz::require_admin(&ctx)?;
     let pool = state.require_pool()?;
     let repo = UserDataRepo::new(pool.clone());
     let accounts = repo.get_user_accounts(&user_id).await?;

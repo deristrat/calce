@@ -5,7 +5,9 @@ use axum::Router;
 use axum::extract::State;
 use axum::routing::{get, post};
 
-use crate::auth::{Auth, require_admin};
+use calce_data::auth::authz::require_admin;
+
+use crate::auth::Auth;
 use crate::db_simulator::{DbSimulator, DbSimulatorConfig, DbSimulatorStats};
 use crate::error::ApiError;
 use crate::state::AppState;

@@ -3,7 +3,6 @@
 //! Provides domain types, calculation functions, and service traits
 //! for computing portfolio market values from trade history.
 
-
 pub mod calc;
 pub mod context;
 pub mod domain;
