@@ -3,8 +3,7 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use crate::concurrent_market_data::ConcurrentMarketData;
-use crate::market_data_builder::MarketDataBuilder;
+use crate::concurrent_market_data::{ConcurrentMarketData, MarketDataBuilder};
 
 pub struct MarketDataStore {
     market_data: Arc<ConcurrentMarketData>,

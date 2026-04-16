@@ -12,10 +12,71 @@ use chrono::{Datelike, NaiveDate};
 use dashmap::DashMap;
 use tokio::sync::mpsc;
 
-use crate::market_data_builder::MarketDataBuilder;
-
 fn day_ord(date: NaiveDate) -> i32 {
     date.num_days_from_ce()
+}
+
+/// Accumulates market data for bulk-loading into [`ConcurrentMarketData`].
+///
+/// Call [`add_price`], [`add_fx_rate`], [`add_instrument_type`], and
+/// [`add_allocation`] to build up data, then pass the builder to
+/// [`ConcurrentMarketData::from_builder`] to materialise the concurrent store.
+///
+/// [`add_price`]: MarketDataBuilder::add_price
+/// [`add_fx_rate`]: MarketDataBuilder::add_fx_rate
+/// [`add_instrument_type`]: MarketDataBuilder::add_instrument_type
+/// [`add_allocation`]: MarketDataBuilder::add_allocation
+#[derive(Default)]
+pub struct MarketDataBuilder {
+    prices: HashMap<InstrumentId, Vec<(i32, f64)>>,
+    fx_rates: HashMap<(Currency, Currency), Vec<(i32, f64)>>,
+    instrument_types: HashMap<InstrumentId, InstrumentType>,
+    allocations: HashMap<InstrumentId, HashMap<String, Vec<(String, f64)>>>,
+}
+
+impl MarketDataBuilder {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn add_price(&mut self, instrument: &InstrumentId, date: NaiveDate, price: Price) {
+        self.prices
+            .entry(instrument.clone())
+            .or_default()
+            .push((date.num_days_from_ce(), price.value()));
+    }
+
+    pub fn add_fx_rate(&mut self, rate: FxRate, date: NaiveDate) {
+        self.fx_rates
+            .entry((rate.from, rate.to))
+            .or_default()
+            .push((date.num_days_from_ce(), rate.rate));
+    }
+
+    pub fn add_instrument_type(
+        &mut self,
+        instrument: &InstrumentId,
+        instrument_type: InstrumentType,
+    ) {
+        self.instrument_types
+            .insert(instrument.clone(), instrument_type);
+    }
+
+    pub fn add_allocation(
+        &mut self,
+        instrument: &InstrumentId,
+        dimension: &str,
+        key: &str,
+        weight: f64,
+    ) {
+        self.allocations
+            .entry(instrument.clone())
+            .or_default()
+            .entry(dimension.to_owned())
+            .or_default()
+            .push((key.to_owned(), weight));
+    }
 }
 
 /// Concurrent market data store backed by lock-free time-series caches.
