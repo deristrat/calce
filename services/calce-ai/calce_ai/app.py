@@ -23,8 +23,11 @@ MODEL = "claude-sonnet-4-20250514"
 logging.basicConfig(level=logging.INFO, format="%(levelname)s:  %(name)s - %(message)s", force=True)
 log = logging.getLogger("calce-ai")
 
-# Load .env from project root
-load_dotenv(Path(__file__).resolve().parents[3] / ".env")
+# Load .env from project root when running from a source checkout. In container
+# deployments the file does not exist (env vars are injected by the runtime).
+_parents = Path(__file__).resolve().parents
+if len(_parents) > 3:
+    load_dotenv(_parents[3] / ".env")
 
 app = FastAPI(title="Calce AI")
 

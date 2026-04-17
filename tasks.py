@@ -145,6 +145,31 @@ def db(c):
     c.run("docker compose up -d postgres", pty=True)
 
 
+# ── Dockerized stack ────────────────────────────────────────────────────
+
+
+@task
+def docker_up(c, build=False):
+    """Bring up the full containerized stack (postgres + api + ai + console). Use -b to rebuild images."""
+    flag = " --build" if build else ""
+    c.run(f"docker compose --profile full up -d{flag}", pty=True)
+    print()
+    print("Dockerized stack is up:")
+    print("  Console:   http://localhost:48100")
+    print("  API:       http://localhost:45701")
+    print("  AI:        http://localhost:45801")
+    print("  Postgres:  postgresql://calce:calce@localhost:5433/calce")
+    print()
+    print("Tail logs:  docker compose --profile full logs -f")
+    print("Tear down:  invoke docker-down")
+
+
+@task
+def docker_down(c):
+    """Stop the containerized stack (postgres volume is preserved)."""
+    c.run("docker compose --profile full down", pty=True)
+
+
 @task
 def db_stop(c):
     """Stop the local Postgres database."""

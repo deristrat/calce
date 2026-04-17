@@ -10,6 +10,80 @@ services:
       POSTGRES_PASSWORD: calce
     volumes:
       - calce_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U calce -d calce"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # ── Full containerized stack ────────────────────────────────────────────
+  # Activate with:  docker compose --profile full up -d
+  # Uses different host ports than the local dev env (invoke dev).
+
+  calce-db-migrate:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: services/calce-db/Dockerfile
+    image: calce/db-migrate:local
+    environment:
+      DATABASE_URL: postgresql://calce:calce@postgres:5432/calce
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  calce-api:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: crates/calce-api/Dockerfile
+    image: calce/api:local
+    environment:
+      DATABASE_URL: postgresql://calce:calce@postgres:5432/calce
+      PORT: "35701"
+      RUST_LOG: info
+      CALCE_JWT_PRIVATE_KEY: ${CALCE_JWT_PRIVATE_KEY}
+      CALCE_HMAC_SECRET: ${CALCE_HMAC_SECRET}
+      CALCE_CDC_ENABLED: "true"
+    ports:
+      - "45701:35701"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      calce-db-migrate:
+        condition: service_completed_successfully
+
+  calce-ai:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: services/calce-ai/Dockerfile
+    image: calce/ai:local
+    environment:
+      DATABASE_URL: postgresql://calce:calce@postgres:5432/calce
+      PORT: "35801"
+      CALCE_JWT_PRIVATE_KEY: ${CALCE_JWT_PRIVATE_KEY}
+      CALCE_HMAC_SECRET: ${CALCE_HMAC_SECRET}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+    ports:
+      - "45801:35801"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      calce-db-migrate:
+        condition: service_completed_successfully
+
+  calce-console:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: services/calce-console/Dockerfile
+    image: calce/console:local
+    ports:
+      - "48100:80"
+    depends_on:
+      - calce-api
 
 volumes:
   calce_pgdata:
