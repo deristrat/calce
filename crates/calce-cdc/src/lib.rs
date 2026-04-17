@@ -1,16 +1,48 @@
-pub mod error;
-pub mod listener;
-pub mod protocol;
-pub mod wire;
+//! Postgres logical-replication listener for Calce.
+//!
+//! Streams WAL changes through the `pgoutput` plugin and emits [`CdcEvent`]s
+//! on a Tokio channel. Each event carries the table name, the DML operation,
+//! and the row's columns as text — consumers decode the domain meaning.
+//!
+//! The listener creates (or reuses) a replication slot and publication on
+//! startup, reconnects with exponential backoff on failure, and
+//! back-pressures the WAL stream when the consumer is slow.
+//!
+//! ```no_run
+//! # async fn run() {
+//! let config = calce_cdc::CdcConfig::from_env().expect("CDC disabled");
+//! let (listener, mut rx) = calce_cdc::CdcListener::new(config, 4096);
+//! tokio::spawn(listener.run());
+//! while let Some(event) = rx.recv().await {
+//!     // handle event
+//! }
+//! # }
+//! ```
+
+mod error;
+mod listener;
+mod protocol;
+mod wire;
 
 pub use error::CdcError;
 pub use listener::CdcListener;
 
 use std::collections::HashMap;
 
-use calce_core::domain::currency::Currency;
-use calce_core::domain::instrument::InstrumentId;
-use chrono::NaiveDate;
+/// Tables included in the CDC publication.
+///
+/// The listener creates or amends the publication on startup so exactly these
+/// tables are replicated. Events for any other table are never emitted.
+pub const REPLICATED_TABLES: &[&str] = &[
+    "prices",
+    "fx_rates",
+    "trades",
+    "instruments",
+    "users",
+    "organizations",
+    "accounts",
+    "api_keys",
+];
 
 /// The kind of DML operation that triggered a CDC event.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,27 +80,14 @@ impl CdcConfig {
     }
 }
 
-/// A typed change event from the database.
+/// A single row change replicated from Postgres.
+///
+/// For `Delete`, `columns` contains only the primary-key or replica-identity
+/// columns; for `Insert`/`Update` it contains the full new row.
 #[derive(Debug, Clone)]
-pub enum CdcEvent {
-    /// A price was inserted or updated.
-    PriceChanged {
-        instrument_id: InstrumentId,
-        date: NaiveDate,
-        price: f64,
-    },
-    /// An FX rate was inserted or updated.
-    FxRateChanged {
-        from_currency: Currency,
-        to_currency: Currency,
-        date: NaiveDate,
-        rate: f64,
-    },
-    /// A row changed in a table without a typed handler (generic catchall).
-    EntityChanged {
-        table: String,
-        operation: CdcOperation,
-        /// Column name to text value. `None` for NULL or unchanged-toast.
-        columns: HashMap<String, Option<String>>,
-    },
+pub struct CdcEvent {
+    pub table: String,
+    pub operation: CdcOperation,
+    /// Column name → text value. `None` means NULL or an unchanged TOAST value.
+    pub columns: HashMap<String, Option<String>>,
 }

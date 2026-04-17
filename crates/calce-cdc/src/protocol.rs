@@ -9,7 +9,7 @@ use bytes::{Buf, BufMut, BytesMut};
 use crate::error::CdcError;
 
 /// Log Sequence Number — position in the WAL.
-pub type Lsn = u64;
+pub(crate) type Lsn = u64;
 
 // =============================================================================
 // Layer 1: Replication stream framing

@@ -245,8 +245,6 @@ name = "calce-cdc"
 version = "0.1.0"
 dependencies = [
  "bytes",
- "calce-core",
- "chrono",
  "fallible-iterator",
  "postgres-protocol",
  "thiserror",

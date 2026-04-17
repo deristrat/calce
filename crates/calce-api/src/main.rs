@@ -96,6 +96,10 @@ async fn main() {
     let _cdc = calce_data::cdc::start_cdc(
         Arc::clone(&md),
         Arc::clone(&user_data),
+        market_data
+            .list_instruments()
+            .into_iter()
+            .map(|i| (i.id, i.ticker)),
         entity_pubsub.event_sender(),
     );
 

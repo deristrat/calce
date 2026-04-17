@@ -4,12 +4,10 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-calce-core = { path = "../calce-core" }
 postgres-protocol = "0.6"
 fallible-iterator = "0.2"
 tokio = { version = "1", features = ["net", "io-util", "time", "sync", "rt"] }
 bytes = "1"
-chrono = { version = "0.4", default-features = false, features = ["std"] }
 tracing = "0.1"
 thiserror = "2"
 

@@ -6,7 +6,7 @@
 
 use std::time::Duration;
 
-use calce_cdc::{CdcConfig, CdcEvent, CdcListener};
+use calce_cdc::{CdcConfig, CdcListener};
 use tokio::time::timeout;
 
 fn test_db_url() -> String {
@@ -40,18 +40,17 @@ async fn drop_test_slot(db_url: &str) {
         .await;
 }
 
-async fn insert_test_price(db_url: &str) -> String {
+async fn insert_test_price(db_url: &str) -> i64 {
     let (client, conn) = tokio_postgres::connect(db_url, tokio_postgres::NoTls)
         .await
         .expect("connect for insert");
     tokio::spawn(conn);
 
     let row = client
-        .query_one("SELECT id, ticker FROM instruments LIMIT 1", &[])
+        .query_one("SELECT id FROM instruments LIMIT 1", &[])
         .await
         .expect("need at least one instrument");
     let inst_id: i64 = row.get(0);
-    let ticker: String = row.get(1);
 
     client
         .execute(
@@ -63,7 +62,7 @@ async fn insert_test_price(db_url: &str) -> String {
         .await
         .expect("insert test price");
 
-    ticker
+    inst_id
 }
 
 async fn cleanup_test_price(db_url: &str) {
@@ -99,30 +98,37 @@ async fn cdc_receives_price_insert() {
     // Give the listener time to connect and start streaming
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    let expected_ticker = insert_test_price(&db_url).await;
-    eprintln!("Inserted test price for ticker: {expected_ticker}");
+    let expected_id = insert_test_price(&db_url).await;
+    eprintln!("Inserted test price for instrument_id: {expected_id}");
 
-    // Wait for the CDC event (timeout after 10 seconds)
-    let result = timeout(Duration::from_secs(10), rx.recv()).await;
-
-    match result {
-        Ok(Some(CdcEvent::PriceChanged {
-            instrument_id,
-            price,
-            ..
-        })) => {
-            assert_eq!(instrument_id.as_str(), expected_ticker);
-            assert!((price - 99999.99).abs() < 0.001);
-            eprintln!(
-                "CDC E2E PASS: received PriceChanged for {} with price {}",
-                instrument_id, price
-            );
+    // Drain events until we see a matching prices row, or time out.
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
+        let result = timeout(remaining, rx.recv()).await;
+        match result {
+            Ok(Some(event)) if event.table == "prices" => {
+                let got_id: i64 = event
+                    .columns
+                    .get("instrument_id")
+                    .and_then(|v| v.as_deref())
+                    .and_then(|s| s.parse().ok())
+                    .expect("prices row must carry instrument_id");
+                let price: f64 = event
+                    .columns
+                    .get("price")
+                    .and_then(|v| v.as_deref())
+                    .and_then(|s| s.parse().ok())
+                    .expect("prices row must carry price");
+                assert_eq!(got_id, expected_id);
+                assert!((price - 99999.99).abs() < 0.001);
+                eprintln!("CDC E2E PASS: prices row for id={got_id} price={price}");
+                break;
+            }
+            Ok(Some(_other)) => continue,
+            Ok(None) => panic!("CDC channel closed unexpectedly"),
+            Err(_) => panic!("Timed out waiting for CDC event"),
         }
-        Ok(Some(other)) => {
-            eprintln!("CDC E2E: got unexpected event first: {other:?}");
-        }
-        Ok(None) => panic!("CDC channel closed unexpectedly"),
-        Err(_) => panic!("Timed out waiting for CDC event"),
     }
 
     listener_handle.abort();
