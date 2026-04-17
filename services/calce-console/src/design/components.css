@@ -973,6 +973,10 @@ a.ds-stat--clickable:hover {
   grid-template-columns: repeat(4, 1fr);
 }
 
+.ds-grid--cols-5 {
+  grid-template-columns: repeat(5, 1fr);
+}
+
 /* -----------------------------------------------------------
    CROSS-RATE MATRIX
    ----------------------------------------------------------- */
@@ -1140,12 +1144,23 @@ a.ds-stat--clickable:hover {
   margin-bottom: var(--spacing-xl);
 }
 
-.ds-mt-md {
-  margin-top: var(--spacing-md);
-}
+.ds-mt-xs { margin-top: var(--spacing-xs); }
+.ds-mt-sm { margin-top: var(--spacing-sm); }
+.ds-mt-md { margin-top: var(--spacing-md); }
+.ds-mt-lg { margin-top: var(--spacing-lg); }
+.ds-mt-xl { margin-top: var(--spacing-xl); }
+.ds-mt-2xl { margin-top: var(--spacing-2xl); }
 
-.ds-mt-xl {
-  margin-top: var(--spacing-xl);
+.ds-mb-xs { margin-bottom: var(--spacing-xs); }
+.ds-mb-sm { margin-bottom: var(--spacing-sm); }
+.ds-mb-md { margin-bottom: var(--spacing-md); }
+.ds-mb-lg { margin-bottom: var(--spacing-lg); }
+.ds-mb-xl { margin-bottom: var(--spacing-xl); }
+.ds-mb-2xl { margin-bottom: var(--spacing-2xl); }
+
+.ds-scroll-y {
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .ds-flex {

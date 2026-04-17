@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import type { ColumnDef } from '@tanstack/react-table'
 import { api } from '../api/client'
 import type { ApiKeyCreated } from '../api/types'
 import { IconChevronLeft } from '../components/icons'
@@ -10,8 +11,17 @@ import Badge from '../components/Badge'
 import Button from '../components/Button'
 import Input from '../components/Input'
 import Modal from '../components/Modal'
+import DataTable from '../components/DataTable'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useEntityEvents } from '../hooks/useEntityEvents'
+
+type ApiKeyRow = {
+  id: number
+  name: string
+  key_prefix: string
+  expires_at: string | null
+  created_at: string
+}
 
 export default function OrganizationDetailPage() {
   const { id } = useParams()
@@ -91,7 +101,7 @@ function ApiKeysSection({
   queryClient,
 }: {
   orgId: string
-  apiKeys: { id: number; name: string; key_prefix: string; expires_at: string | null; created_at: string }[]
+  apiKeys: ApiKeyRow[]
   isLoading: boolean
   queryClient: ReturnType<typeof useQueryClient>
 }) {
@@ -106,6 +116,47 @@ function ApiKeysSection({
       setRevokeTarget(null)
     },
   })
+
+  const columns = useMemo<ColumnDef<ApiKeyRow, unknown>[]>(
+    () => [
+      { accessorKey: 'name', header: 'Name' },
+      {
+        accessorKey: 'key_prefix',
+        header: 'Prefix',
+        cell: ({ getValue }) => <span className="ds-text--mono">{getValue<string>()}...</span>,
+      },
+      {
+        accessorKey: 'created_at',
+        header: 'Created',
+        cell: ({ getValue }) => new Date(getValue<string>()).toLocaleDateString(),
+      },
+      {
+        accessorKey: 'expires_at',
+        header: 'Expires',
+        cell: ({ getValue }) => {
+          const expires = getValue<string | null>()
+          if (!expires) return <Badge variant="neutral">Never</Badge>
+          if (new Date(expires) < new Date()) return <Badge variant="error">Expired</Badge>
+          return new Date(expires).toLocaleDateString()
+        },
+      },
+      {
+        id: 'actions',
+        header: '',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <Button
+            variant="danger"
+            size="sm"
+            onClick={() => setRevokeTarget({ id: row.original.id, name: row.original.name })}
+          >
+            Revoke
+          </Button>
+        ),
+      },
+    ],
+    []
+  )
 
   return (
     <>
@@ -124,46 +175,7 @@ function ApiKeysSection({
         ) : apiKeys.length === 0 ? (
           <p className="ds-text--secondary">No API keys.</p>
         ) : (
-          <table className="ds-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Prefix</th>
-                <th>Created</th>
-                <th>Expires</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {apiKeys.map((key) => (
-                <tr key={key.id}>
-                  <td>{key.name}</td>
-                  <td><span className="ds-text--mono">{key.key_prefix}...</span></td>
-                  <td>{new Date(key.created_at).toLocaleDateString()}</td>
-                  <td>
-                    {key.expires_at ? (
-                      new Date(key.expires_at) < new Date() ? (
-                        <Badge variant="error">Expired</Badge>
-                      ) : (
-                        new Date(key.expires_at).toLocaleDateString()
-                      )
-                    ) : (
-                      <Badge variant="neutral">Never</Badge>
-                    )}
-                  </td>
-                  <td>
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      onClick={() => setRevokeTarget({ id: key.id, name: key.name })}
-                    >
-                      Revoke
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <DataTable data={apiKeys} columns={columns} />
         )}
       </Card>
 
@@ -181,7 +193,7 @@ function ApiKeysSection({
         title="API Key Created"
         footer={<Button onClick={() => setCreatedKey(null)}>Done</Button>}
       >
-        <p className="ds-text--secondary" style={{ marginBottom: 'var(--ds-space-3)' }}>
+        <p className="ds-text--secondary ds-mb-md">
           Copy this key now — it won't be shown again.
         </p>
         <code className="ds-code-block">{createdKey?.key}</code>

@@ -9,6 +9,7 @@ import Button from '../components/Button'
 import Card from '../components/Card'
 import StatCard from '../components/StatCard'
 import Badge from '../components/Badge'
+import Input from '../components/Input'
 
 const INITIAL_COUNTS = { price_current: 0, price_history: 0, fx_current: 0 } as const;
 type Counts = typeof INITIAL_COUNTS;
@@ -87,7 +88,7 @@ export default function SimulatorPage() {
       <div className="ds-page__header">
         <div>
           <h1 className="ds-page__title">Price Simulator</h1>
-          <p className="ds-text--secondary" style={{ marginTop: 'var(--spacing-xs)' }}>
+          <p className="ds-text--secondary ds-mt-xs">
             Simulates price movements for development and testing
           </p>
         </div>
@@ -115,7 +116,7 @@ export default function SimulatorPage() {
         <p className="ds-text--secondary">Loading...</p>
       ) : stats ? (
         <>
-          <div className="ds-stat-grid">
+          <div className="ds-grid ds-grid--cols-5 ds-mb-xl">
             <StatCard label="Ticks" value={formatNumber(stats.ticks)} />
             <StatCard label="Price Updates" value={formatNumber(stats.price_updates)} />
             <StatCard label="FX Updates" value={formatNumber(stats.fx_updates)} />
@@ -124,13 +125,13 @@ export default function SimulatorPage() {
           </div>
 
           <Card>
-            <h3 style={{ marginBottom: 'var(--spacing-sm)' }}>Configuration</h3>
+            <h3 className="ds-mb-sm">Configuration</h3>
             <table className="ds-table">
               <tbody>
                 <tr>
                   <td className="ds-table__cell">Tick interval (ms)</td>
                   <td className="ds-table__cell ds-table__cell--numeric">
-                    <input className="ds-input ds-input--compact" type="number" min="10" step="10"
+                    <Input className="ds-input--compact" type="number" min="10" step="10"
                       value={config.tick_interval_ms} disabled={running}
                       onChange={e => updateConfig('tick_interval_ms', e.target.value)} />
                   </td>
@@ -138,7 +139,7 @@ export default function SimulatorPage() {
                 <tr>
                   <td className="ds-table__cell">Prices per tick</td>
                   <td className="ds-table__cell ds-table__cell--numeric">
-                    <input className="ds-input ds-input--compact" type="number" min="0" step="1"
+                    <Input className="ds-input--compact" type="number" min="0" step="1"
                       value={config.prices_per_tick} disabled={running}
                       onChange={e => updateConfig('prices_per_tick', e.target.value)} />
                   </td>
@@ -146,7 +147,7 @@ export default function SimulatorPage() {
                 <tr>
                   <td className="ds-table__cell">FX pairs per tick</td>
                   <td className="ds-table__cell ds-table__cell--numeric">
-                    <input className="ds-input ds-input--compact" type="number" min="0" step="1"
+                    <Input className="ds-input--compact" type="number" min="0" step="1"
                       value={config.fx_per_tick} disabled={running}
                       onChange={e => updateConfig('fx_per_tick', e.target.value)} />
                   </td>
@@ -154,7 +155,7 @@ export default function SimulatorPage() {
                 <tr>
                   <td className="ds-table__cell">History updates per tick</td>
                   <td className="ds-table__cell ds-table__cell--numeric">
-                    <input className="ds-input ds-input--compact" type="number" min="0" step="1"
+                    <Input className="ds-input--compact" type="number" min="0" step="1"
                       value={config.history_per_tick} disabled={running}
                       onChange={e => updateConfig('history_per_tick', e.target.value)} />
                   </td>
@@ -164,7 +165,7 @@ export default function SimulatorPage() {
           </Card>
 
           <Card>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--spacing-sm)' }}>
+            <div className="ds-flex ds-flex--between ds-flex--center ds-mb-sm">
               <h3>Live PubSub Events</h3>
               <div className="ds-page__actions">
                 <Badge variant={sseConnected ? 'success' : 'neutral'}>
@@ -179,7 +180,7 @@ export default function SimulatorPage() {
             </div>
 
             {totalEvents > 0 && (
-              <div className="ds-stat-grid" style={{ marginBottom: 'var(--spacing-md)' }}>
+              <div className="ds-grid ds-grid--cols-4 ds-mb-md">
                 <StatCard label="Total Events" value={formatNumber(totalEvents)} />
                 <StatCard label="Price (current)" value={formatNumber(counts.price_current)} />
                 <StatCard label="Price (history)" value={formatNumber(counts.price_history)} />
@@ -188,7 +189,7 @@ export default function SimulatorPage() {
             )}
 
             {recentEvents.length > 0 ? (
-              <div style={{ maxHeight: '300px', overflow: 'auto' }} className="ds-table--sticky-header">
+              <div className="ds-scroll-y ds-table--sticky-header">
                 <table className="ds-table">
                   <thead>
                     <tr>

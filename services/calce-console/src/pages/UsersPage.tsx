@@ -7,6 +7,7 @@ import type { User } from '../api/types'
 import { PAGE_SIZE } from '../constants'
 import DataTable from '../components/DataTable'
 import SearchInput from '../components/SearchInput'
+import Select from '../components/Select'
 import Pagination from '../components/Pagination'
 import Spinner from '../components/Spinner'
 import { usePageTitle } from '../hooks/usePageTitle'
@@ -89,11 +90,7 @@ export default function UsersPage() {
       <div className="ds-page__header">
         <h1 className="ds-page__title">Users</h1>
         <div className="ds-page__actions">
-          <select
-            className="ds-select"
-            value={organizationId || ''}
-            onChange={handleOrgChange}
-          >
+          <Select value={organizationId || ''} onChange={handleOrgChange}>
             <option value="">All organizations</option>
             {orgs
               ?.slice()
@@ -103,7 +100,7 @@ export default function UsersPage() {
                   {org.name || org.id}
                 </option>
               ))}
-          </select>
+          </Select>
           <SearchInput
             value={search}
             onChange={setSearch}

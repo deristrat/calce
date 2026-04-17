@@ -11,6 +11,7 @@ import DataTable from '../components/DataTable'
 import Pagination from '../components/Pagination'
 import PriceChart from '../components/PriceChart'
 import Spinner from '../components/Spinner'
+import Toggle from '../components/Toggle'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useEntityEvents } from '../hooks/useEntityEvents'
 
@@ -188,17 +189,15 @@ export default function FxRateDetailPage() {
 
       {reverseAvailable && (
         <div className="ds-kv-inline ds-mt-md">
-          <label className="ds-kv-inline__item" style={{ cursor: 'pointer' }}>
-            <button
-              type="button"
-              className={`ds-toggle${showReverse ? ' ds-toggle--checked' : ''}`}
-              onClick={() => { setShowReverse(!showReverse); setPage(1) }}
-              aria-pressed={showReverse}
-            />
-            <span>
-              Reverse rate <Link to={`/fx-rates/${to}/${from}`}><Badge variant="neutral">{reversePair}</Badge></Link> available — show for comparison
-            </span>
-          </label>
+          <Toggle
+            checked={showReverse}
+            onChange={(next) => { setShowReverse(next); setPage(1) }}
+            label={
+              <>
+                Reverse rate <Link to={`/fx-rates/${to}/${from}`}><Badge variant="neutral">{reversePair}</Badge></Link> available — show for comparison
+              </>
+            }
+          />
         </div>
       )}
 

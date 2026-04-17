@@ -11,6 +11,7 @@ import DataTable from '../components/DataTable'
 import PriceChart from '../components/PriceChart'
 import type { ChartMarker } from '../components/PriceChart'
 import Spinner from '../components/Spinner'
+import Toggle from '../components/Toggle'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useEntityEvents } from '../hooks/useEntityEvents'
 
@@ -186,15 +187,7 @@ export default function PositionDetailPage() {
 
       <div className="ds-chart-container ds-mt-lg">
         <div className="ds-kv-inline ds-mb-sm">
-          <label className="ds-kv-inline__item" style={{ cursor: 'pointer' }}>
-            <button
-              type="button"
-              className={`ds-toggle${showTrades ? ' ds-toggle--checked' : ''}`}
-              onClick={() => setShowTrades(!showTrades)}
-              aria-pressed={showTrades}
-            />
-            <span>Show trades</span>
-          </label>
+          <Toggle checked={showTrades} onChange={setShowTrades} label="Show trades" />
         </div>
         {pricesLoading ? (
           <Spinner size="md" center />
