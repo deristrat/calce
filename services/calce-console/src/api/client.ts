@@ -12,8 +12,6 @@ import type {
   Price,
   DbSimulatorConfig,
   DbSimulatorStats,
-  SimulatorConfig,
-  SimulatorStats,
   SystemConfig,
   SystemInfo,
   TradeSummary,
@@ -254,23 +252,6 @@ export const api = {
   revokeApiKey(orgId: string, keyId: number): Promise<void> {
     return fetchApi<void>(`/v1/organizations/${orgId}/api-keys/${keyId}`, {
       method: "DELETE",
-    });
-  },
-
-  getSimulatorStatus(): Promise<SimulatorStats> {
-    return fetchApi<SimulatorStats>("/v1/admin/simulator/status");
-  },
-
-  startSimulator(config: SimulatorConfig): Promise<SimulatorStats> {
-    return fetchApi<SimulatorStats>("/v1/admin/simulator/start", {
-      method: "POST",
-      body: JSON.stringify(config),
-    });
-  },
-
-  stopSimulator(): Promise<SimulatorStats> {
-    return fetchApi<SimulatorStats>("/v1/admin/simulator/stop", {
-      method: "POST",
     });
   },
 

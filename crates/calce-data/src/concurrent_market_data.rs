@@ -300,8 +300,6 @@ impl ConcurrentMarketData {
         let _ = self.fx_rates.set_notifier(tx);
     }
 
-    // -- Simulator helpers ---------------------------------------------------
-
     /// All FX pair keys in the cache.
     #[must_use]
     pub fn fx_pair_keys(&self) -> Vec<(Currency, Currency)> {
@@ -337,39 +335,6 @@ impl ConcurrentMarketData {
         rate: f64,
     ) -> Result<(), CacheError> {
         self.fx_rates.update_current(&(from, to), rate)
-    }
-
-    /// Number of history entries for an instrument's price series.
-    #[must_use]
-    pub fn price_history_len(&self, instrument: &InstrumentId) -> Option<usize> {
-        self.prices.get_history(instrument).map(|h| h.len())
-    }
-
-    /// Number of history entries for an FX rate series.
-    #[must_use]
-    pub fn fx_history_len(&self, from: Currency, to: Currency) -> Option<usize> {
-        self.fx_rates.get_history(&(from, to)).map(|h| h.len())
-    }
-
-    /// Read a slice of price history `[from..to)` by raw index.
-    #[must_use]
-    pub fn price_history_range(
-        &self,
-        instrument: &InstrumentId,
-        from: usize,
-        to: usize,
-    ) -> Option<Vec<f64>> {
-        self.prices.get_history_range(instrument, from, to)
-    }
-
-    /// Update a price at a raw history index (no date conversion).
-    pub fn update_price_at_index(
-        &self,
-        instrument: &InstrumentId,
-        index: usize,
-        price: f64,
-    ) -> Result<(), CacheError> {
-        self.prices.update_history(instrument, index, price)
     }
 
     // -- Mutation methods ----------------------------------------------------

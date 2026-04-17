@@ -12,7 +12,6 @@ use sqlx::PgPool;
 
 use crate::db_simulator::DbSimulator;
 use crate::rate_limit::KeyedRateLimiter;
-use crate::simulator::Simulator;
 
 pub(crate) type PricePubSub = PubSub<InstrumentId>;
 pub(crate) type FxPubSub = PubSub<(Currency, Currency)>;
@@ -26,7 +25,6 @@ pub(crate) struct AppState {
     pub auth_config: AuthConfig,
     pub api_key_cache: ApiKeyCache,
     pub auth_rate_limiter: Arc<KeyedRateLimiter>,
-    pub simulator: Option<Arc<Simulator>>,
     pub db_simulator: Option<Arc<DbSimulator>>,
     pub price_pubsub: Option<Arc<PricePubSub>>,
     pub fx_pubsub: Option<Arc<FxPubSub>>,
@@ -39,12 +37,6 @@ impl AppState {
         self.pool
             .as_ref()
             .ok_or_else(|| crate::error::ApiError::BadRequest("database required".into()))
-    }
-
-    pub(crate) fn require_simulator(&self) -> Result<&Arc<Simulator>, crate::error::ApiError> {
-        self.simulator
-            .as_ref()
-            .ok_or_else(|| crate::error::ApiError::BadRequest("simulator not available".into()))
     }
 
     pub(crate) fn require_db_simulator(&self) -> Result<&Arc<DbSimulator>, crate::error::ApiError> {

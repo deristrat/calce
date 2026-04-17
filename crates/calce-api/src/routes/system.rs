@@ -139,11 +139,6 @@ fn component_list(state: &AppState) -> Vec<ComponentInfo> {
             detail: None,
         },
         ComponentInfo {
-            name: "Price simulator",
-            status: available_if(state.simulator.is_some()),
-            detail: None,
-        },
-        ComponentInfo {
             name: "DB simulator",
             status: available_if(state.db_simulator.is_some()),
             detail: None,

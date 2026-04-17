@@ -1,9 +1,9 @@
 //! Database-writing simulator for CDC pipeline testing.
 //!
-//! Unlike the [`crate::simulator`] which writes directly to the in-memory
-//! cache, this simulator writes prices and FX rates to Postgres. The CDC
-//! listener then picks up the WAL changes and propagates them back through
-//! the cache → `PubSub` → SSE pipeline.
+//! Writes synthetic prices and FX rates to Postgres; the CDC listener
+//! picks up the WAL changes and propagates them through the cache →
+//! `PubSub` → SSE pipeline. Used to exercise the real replication path
+//! from the admin console.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -15,8 +15,6 @@ use rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
-
-use crate::simulator::nudge;
 
 // -- Config ------------------------------------------------------------------
 
@@ -228,5 +226,45 @@ impl DbSimulator {
         }
 
         self.stats.ticks.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+/// Nudge a value: if the second decimal digit is odd, increase by 0.01;
+/// if even, decrease by 0.01. This makes values oscillate without drift.
+fn nudge(value: f64) -> f64 {
+    #[allow(clippy::cast_possible_truncation)]
+    let cents = (value * 100.0).floor() as i64;
+    let second_decimal = (cents % 10).unsigned_abs();
+    if second_decimal % 2 == 1 {
+        value + 0.01
+    } else {
+        value - 0.01
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn nudge_odd_second_decimal_increases() {
+        assert!((nudge(10.53) - 10.54).abs() < 1e-10);
+    }
+
+    #[test]
+    fn nudge_even_second_decimal_decreases() {
+        assert!((nudge(10.54) - 10.53).abs() < 1e-10);
+    }
+
+    #[test]
+    fn nudge_zero_second_decimal_decreases() {
+        assert!((nudge(10.50) - 10.49).abs() < 1e-10);
+    }
+
+    #[test]
+    fn nudge_oscillates() {
+        let v0 = 100.42;
+        let v = nudge(nudge(v0));
+        assert!((v - v0).abs() < 1e-10);
     }
 }

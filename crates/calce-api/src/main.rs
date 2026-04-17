@@ -18,7 +18,6 @@ pub mod db_simulator;
 mod error;
 mod rate_limit;
 mod routes;
-pub mod simulator;
 mod state;
 
 #[cfg(test)]
@@ -33,7 +32,6 @@ fn build_router(state: AppState) -> Router {
         .merge(routes::organization_routes())
         .merge(routes::auth_routes())
         .merge(routes::api_key_routes())
-        .merge(routes::simulator_routes())
         .merge(routes::db_simulator_routes())
         .merge(routes::event_routes())
         .merge(routes::system_routes())
@@ -104,7 +102,6 @@ async fn main() {
         entity_pubsub.event_sender(),
     );
 
-    let sim = Arc::new(simulator::Simulator::new(Arc::clone(&md)));
     let db_sim = Arc::new(db_simulator::DbSimulator::new(
         Arc::clone(&md),
         calce_data::queries::market_data::MarketDataRepo::new(pool.clone()),
@@ -117,7 +114,6 @@ async fn main() {
         auth_config,
         api_key_cache: ApiKeyCache::new(),
         auth_rate_limiter: rate_limit::create_auth_rate_limiter(),
-        simulator: Some(sim),
         db_simulator: Some(db_sim),
         price_pubsub: Some(Arc::new(price_pubsub)),
         fx_pubsub: Some(Arc::new(fx_pubsub)),
@@ -154,7 +150,6 @@ mod tests {
             auth_config: TEST_AUTH_CONFIG.clone(),
             api_key_cache: ApiKeyCache::new(),
             auth_rate_limiter: rate_limit::create_auth_rate_limiter(),
-            simulator: None,
             db_simulator: None,
             price_pubsub: None,
             fx_pubsub: None,

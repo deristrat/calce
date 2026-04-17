@@ -16,7 +16,6 @@ import InstrumentDetailPage from './pages/InstrumentDetailPage'
 import DesignSystemPage from './pages/DesignSystemPage'
 import DesignComponentsPage from './pages/DesignComponentsPage'
 import DesignExamplesPage from './pages/DesignExamplesPage'
-import SimulatorPage from './pages/SimulatorPage'
 import UpdateSimulatorPage from './pages/UpdateSimulatorPage'
 import SystemOverviewPage from './pages/SystemOverviewPage'
 import SystemConfigPage from './pages/SystemConfigPage'
@@ -40,7 +39,6 @@ export default function App() {
           <Route path="/fx-rates/:from/:to" element={<FxRateDetailPage />} />
           <Route path="/instruments" element={<InstrumentsPage />} />
           <Route path="/instruments/:id" element={<InstrumentDetailPage />} />
-          <Route path="/simulator" element={<SimulatorPage />} />
           <Route path="/update-simulator" element={<UpdateSimulatorPage />} />
           <Route path="/system" element={<Navigate to="/system/overview" replace />} />
           <Route path="/system/overview" element={<SystemOverviewPage />} />

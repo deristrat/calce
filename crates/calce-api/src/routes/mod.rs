@@ -4,7 +4,6 @@ mod calc;
 mod db_simulator;
 mod events;
 mod organizations;
-mod simulator;
 mod system;
 mod users;
 
@@ -30,10 +29,6 @@ pub(crate) fn auth_routes() -> Router<AppState> {
 
 pub(crate) fn api_key_routes() -> Router<AppState> {
     api_keys::routes()
-}
-
-pub(crate) fn simulator_routes() -> Router<AppState> {
-    simulator::routes()
 }
 
 pub(crate) fn db_simulator_routes() -> Router<AppState> {

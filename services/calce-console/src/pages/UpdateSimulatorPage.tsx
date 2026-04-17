@@ -67,7 +67,7 @@ export default function UpdateSimulatorPage() {
   );
   const onEvent = useCallback((data: unknown) => pushEvent(data), [pushEvent]);
   const { connected: sseConnected, connect: connectSse, disconnect: disconnectSse } = useEventSource(
-    '/v1/admin/simulator/events',
+    '/v1/admin/market-events',
     { onEvent },
   );
 
