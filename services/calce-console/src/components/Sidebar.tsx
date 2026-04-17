@@ -9,6 +9,8 @@ import {
   IconActivity,
   IconDatabase,
   IconPalette,
+  IconServer,
+  IconSettings,
   IconLogout,
 } from './icons'
 import ThemeToggle from './ThemeToggle'
@@ -51,6 +53,15 @@ function Sidebar() {
           </NavLink>
           <NavLink to="/update-simulator" className={linkClass}>
             <IconDatabase /> Update Simulator
+          </NavLink>
+        </div>
+        <div className="ds-sidebar__section">
+          <div className="ds-sidebar__section-title">System</div>
+          <NavLink to="/system/overview" className={linkClass}>
+            <IconServer /> Overview
+          </NavLink>
+          <NavLink to="/system/config" className={linkClass}>
+            <IconSettings /> Config
           </NavLink>
         </div>
         <div className="ds-sidebar__section">

@@ -145,3 +145,39 @@ export interface EntityChangeEvent {
   table: string;
   id: string;
 }
+
+export interface SystemServiceInfo {
+  name: string;
+  role: string;
+  url: string;
+  status: string | null;
+}
+
+export interface SystemComponentInfo {
+  name: string;
+  status: string;
+  detail: string | null;
+}
+
+export interface SystemInfo {
+  api: {
+    version: string;
+    started_at: string;
+    target: string;
+    profile: string;
+  };
+  services: SystemServiceInfo[];
+  components: SystemComponentInfo[];
+}
+
+export interface SystemConfigEntry {
+  key: string;
+  group: string;
+  description: string;
+  value: string | null;
+  secret: boolean;
+}
+
+export interface SystemConfig {
+  entries: SystemConfigEntry[];
+}

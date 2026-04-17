@@ -7,6 +7,7 @@ use calce_data::auth::api_key::ApiKeyCache;
 use calce_data::market_data_store::MarketDataStore;
 use calce_data::user_data_store::UserDataStore;
 use calce_datastructs::pubsub::PubSub;
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 
 use crate::db_simulator::DbSimulator;
@@ -30,6 +31,7 @@ pub(crate) struct AppState {
     pub price_pubsub: Option<Arc<PricePubSub>>,
     pub fx_pubsub: Option<Arc<FxPubSub>>,
     pub entity_pubsub: Option<Arc<EntityPubSub>>,
+    pub started_at: DateTime<Utc>,
 }
 
 impl AppState {

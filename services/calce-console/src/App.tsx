@@ -18,6 +18,8 @@ import DesignComponentsPage from './pages/DesignComponentsPage'
 import DesignExamplesPage from './pages/DesignExamplesPage'
 import SimulatorPage from './pages/SimulatorPage'
 import UpdateSimulatorPage from './pages/UpdateSimulatorPage'
+import SystemOverviewPage from './pages/SystemOverviewPage'
+import SystemConfigPage from './pages/SystemConfigPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 export default function App() {
@@ -40,6 +42,9 @@ export default function App() {
           <Route path="/instruments/:id" element={<InstrumentDetailPage />} />
           <Route path="/simulator" element={<SimulatorPage />} />
           <Route path="/update-simulator" element={<UpdateSimulatorPage />} />
+          <Route path="/system" element={<Navigate to="/system/overview" replace />} />
+          <Route path="/system/overview" element={<SystemOverviewPage />} />
+          <Route path="/system/config" element={<SystemConfigPage />} />
           <Route path="/design/system" element={<DesignSystemPage />} />
           <Route path="/design/components" element={<DesignComponentsPage />} />
           <Route path="/design/examples" element={<DesignExamplesPage />} />

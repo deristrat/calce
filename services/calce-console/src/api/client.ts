@@ -14,6 +14,8 @@ import type {
   DbSimulatorStats,
   SimulatorConfig,
   SimulatorStats,
+  SystemConfig,
+  SystemInfo,
   TradeSummary,
   User,
 } from "./types";
@@ -287,5 +289,13 @@ export const api = {
     return fetchApi<DbSimulatorStats>("/v1/admin/db-simulator/stop", {
       method: "POST",
     });
+  },
+
+  getSystemInfo(): Promise<SystemInfo> {
+    return fetchApi<SystemInfo>("/v1/admin/system/info");
+  },
+
+  getSystemConfig(): Promise<SystemConfig> {
+    return fetchApi<SystemConfig>("/v1/admin/system/config");
   },
 };

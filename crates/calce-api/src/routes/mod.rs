@@ -5,6 +5,7 @@ mod db_simulator;
 mod events;
 mod organizations;
 mod simulator;
+mod system;
 mod users;
 
 use axum::Router;
@@ -41,4 +42,8 @@ pub(crate) fn db_simulator_routes() -> Router<AppState> {
 
 pub(crate) fn event_routes() -> Router<AppState> {
     events::routes()
+}
+
+pub(crate) fn system_routes() -> Router<AppState> {
+    system::routes()
 }

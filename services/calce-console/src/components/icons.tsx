@@ -210,6 +210,26 @@ export function IconDatabase({ size = 16, className }: IconProps) {
   );
 }
 
+export function IconServer({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" className={className} {...defaults}>
+      <rect x="2" y="3" width="12" height="4" rx="1" />
+      <rect x="2" y="9" width="12" height="4" rx="1" />
+      <line x1="5" y1="5" x2="5.01" y2="5" />
+      <line x1="5" y1="11" x2="5.01" y2="11" />
+    </svg>
+  );
+}
+
+export function IconSettings({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" className={className} {...defaults}>
+      <circle cx="8" cy="8" r="2.5" />
+      <path d="M13 8a5 5 0 0 0-.1-1l1.3-1-1.5-2.6-1.6.5a5 5 0 0 0-1.7-1L9 1H7l-.4 1.9a5 5 0 0 0-1.7 1l-1.6-.5L1.8 6l1.3 1a5 5 0 0 0 0 2l-1.3 1 1.5 2.6 1.6-.5a5 5 0 0 0 1.7 1L7 15h2l.4-1.9a5 5 0 0 0 1.7-1l1.6.5 1.5-2.6-1.3-1a5 5 0 0 0 .1-1z" />
+    </svg>
+  );
+}
+
 export function IconCurrency({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" className={className} {...defaults}>

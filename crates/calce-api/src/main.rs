@@ -36,6 +36,7 @@ fn build_router(state: AppState) -> Router {
         .merge(routes::simulator_routes())
         .merge(routes::db_simulator_routes())
         .merge(routes::event_routes())
+        .merge(routes::system_routes())
         .layer(CorsLayer::very_permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state)
@@ -121,6 +122,7 @@ async fn main() {
         price_pubsub: Some(Arc::new(price_pubsub)),
         fx_pubsub: Some(Arc::new(fx_pubsub)),
         entity_pubsub: Some(Arc::new(entity_pubsub)),
+        started_at: chrono::Utc::now(),
     };
 
     let app = build_router(state);
@@ -157,6 +159,7 @@ mod tests {
             price_pubsub: None,
             fx_pubsub: None,
             entity_pubsub: None,
+            started_at: chrono::Utc::now(),
         }
     }
 
@@ -301,6 +304,39 @@ mod tests {
     async fn data_users_requires_auth() {
         let (status, _) = get("/v1/data/users", &[]).await;
         assert_eq!(status, StatusCode::UNAUTHORIZED);
+    }
+
+    #[tokio::test]
+    async fn system_info_requires_admin() {
+        let (status, _) = get("/v1/admin/system/info", &[]).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+        let (status, body) = get_authed("/v1/admin/system/info").await;
+        assert_eq!(status, StatusCode::OK);
+        assert!(body["api"]["version"].is_string());
+        assert!(body["services"].is_array());
+        assert!(body["components"].is_array());
+    }
+
+    #[tokio::test]
+    async fn system_config_requires_admin_and_masks_secrets() {
+        unsafe {
+            std::env::set_var("DATABASE_URL", "postgres://u:topsecret@host:5432/calce");
+        }
+
+        let (status, _) = get("/v1/admin/system/config", &[]).await;
+        assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+        let (status, body) = get_authed("/v1/admin/system/config").await;
+        assert_eq!(status, StatusCode::OK);
+        let entries = body["entries"].as_array().expect("entries array");
+        let db = entries
+            .iter()
+            .find(|e| e["key"] == "DATABASE_URL")
+            .expect("DATABASE_URL entry");
+        let value = db["value"].as_str().unwrap_or_default();
+        assert!(!value.contains("topsecret"), "password leaked: {value}");
+        assert!(value.contains("****"));
     }
 
     #[tokio::test]
