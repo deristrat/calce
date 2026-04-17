@@ -12,35 +12,38 @@ Calce loads market data (prices, FX rates) and user data (trades, instruments) f
 Postgres (logical replication, pgoutput protocol)
     |
 calce-cdc (CdcListener)
-    |  typed events via mpsc channel
+    |  CdcEvent { table, operation, columns } via mpsc channel
     v
-calce-data (DataService applies events to caches)
-    |
+calce-data::cdc::start_cdc (background task)
+    |  domain decoding per table
+    v
 ConcurrentMarketData / UserDataStore
     |  existing PubSub notifications
     v
 consumers: calce-api, calce-python, ...
 ```
 
-**CDC lives in the data layer**, not the API layer. `DataService` in calce-data owns both the initial bulk load and the ongoing CDC stream. Any process that constructs a `DataService` gets live updates — the API server, Python bindings, future services.
+**CDC lives in the data layer**, not the API layer. `calce-data::cdc::start_cdc` spawns the listener and event-consumer tasks. Any process that calls it gets live updates — the API server, future services.
 
 ## Crate: `calce-cdc`
 
-A library crate that connects to Postgres logical replication and emits typed domain events. It has no knowledge of caches or stores — it only parses WAL changes and sends `CdcEvent` values on a channel. The consumer (DataService) decides what to do with them.
+A domain-agnostic library crate that connects to Postgres logical replication and emits row-change events. It has no knowledge of Calce's domain types, caches, or stores — it only parses WAL changes and sends `CdcEvent` values on a channel. Each event carries the `table` name, the DML `operation`, and the row's `columns` as text. Consumers decode the domain meaning.
 
 **Key dependency:** `postgres-protocol` (published crate, by the rust-postgres author). Provides wire protocol message encoding/decoding. The crate connects over raw TCP with `replication=database` in the startup message and parses pgoutput binary messages itself. We evaluated Supabase ETL and MaterializeInc's `postgres-replication` fork — both require git dependencies. Our approach uses only published crates.
 
-## Monitored tables
+## Replicated tables
 
-| Table | Events | Cache effect |
-|-------|--------|-------------|
-| `prices` | INSERT, UPDATE | `set_current_price()` |
-| `fx_rates` | INSERT, UPDATE | `set_current_fx_rate()` |
-| `trades` | INSERT, DELETE | `insert_trade()` / `remove_trade()` |
-| `instruments` | INSERT, UPDATE | Reload instrument metadata |
-| `users` | INSERT, UPDATE, DELETE | Update `UserDataStore` + entity event |
-| `organizations` | INSERT, UPDATE, DELETE | Entity event (SSE → frontend) |
-| `accounts` | INSERT, UPDATE, DELETE | Entity event (SSE → frontend) |
+The authoritative list is `calce_cdc::REPLICATED_TABLES`. The listener creates the publication on startup if missing and amends it if a table is missing from an existing publication.
+
+Currently: `prices`, `fx_rates`, `trades`, `instruments`, `users`, `organizations`, `accounts`, `api_keys`.
+
+The consumer in `calce-data` applies decoded changes as follows:
+
+- `prices` (INSERT, UPDATE): calls `set_current_price()` after resolving `instrument_id` → ticker from an in-memory map. Deletes are ignored.
+- `fx_rates` (INSERT, UPDATE): calls `set_current_fx_rate()`. Deletes are ignored.
+- `instruments` (INSERT, UPDATE): updates the consumer's `id → ticker` map, then forwards an entity event.
+- `users` (any): calls `update_user_info()` on `UserDataStore`, then forwards an entity event.
+- all other tables: forwarded as an entity event only (SSE → frontend).
 
 ## Replication slot
 
@@ -55,15 +58,13 @@ FROM pg_replication_slots WHERE slot_name = 'calce_cdc_slot';
 
 ## Configuration
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `CALCE_CDC_ENABLED` | `true` | Enable/disable CDC. Set to `false` to use startup-only loading. |
-| `DATABASE_URL` | (required) | Postgres connection string. Same as the main application. |
+- `CALCE_CDC_ENABLED` (default `true`): set to `false` or `0` to disable CDC entirely.
+- `DATABASE_URL` (required): Postgres connection string. Same as the main application.
 
 Slot name (`calce_cdc_slot`) and publication name (`calce_cdc_pub`) are fixed conventions, not configurable.
 
 ## Database prerequisites
 
-1. `wal_level = logical` in `postgresql.conf` (requires Postgres restart)
-2. Publication created by Alembic migration: `CREATE PUBLICATION calce_cdc_pub FOR TABLE prices, fx_rates, trades, instruments, users, organizations, accounts`
-3. Replication slot created automatically by `CdcListener` on first connect
+1. `wal_level = logical` in `postgresql.conf` (requires Postgres restart).
+2. Publication is created and kept current automatically by the listener on startup.
+3. Replication slot is created automatically on first connect.
