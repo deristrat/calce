@@ -15,11 +15,7 @@ pub(super) fn routes() -> Router<AppState> {
 }
 
 fn repo(state: &AppState) -> Result<UserDataRepo, ApiError> {
-    let pool = state
-        .pool
-        .as_ref()
-        .ok_or_else(|| ApiError::BadRequest("CRUD requires Postgres backend".into()))?;
-    Ok(UserDataRepo::new(pool.clone()))
+    Ok(UserDataRepo::new(state.require_pool()?.clone()))
 }
 
 async fn list_organizations(

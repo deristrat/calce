@@ -36,10 +36,7 @@ async fn events_sse(
 ) -> Result<Sse<impl futures_core::Stream<Item = Result<Event, Infallible>>>, ApiError> {
     require_admin_from_sse(&headers, query.token, &state).await?;
 
-    let entity_pubsub = state
-        .entity_pubsub
-        .as_ref()
-        .ok_or_else(|| ApiError::BadRequest("entity pubsub not available".into()))?;
+    let entity_pubsub = state.require_entity_pubsub()?;
 
     let sub = entity_pubsub.subscribe_all(256);
 

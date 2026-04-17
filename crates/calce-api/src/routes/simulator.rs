@@ -1,5 +1,4 @@
 use std::convert::Infallible;
-use std::sync::Arc;
 
 use axum::extract::{Query, State};
 use axum::http::HeaderMap;
@@ -30,7 +29,7 @@ async fn start(
     body: Option<Json<SimulatorConfig>>,
 ) -> Result<Json<SimulatorStats>, ApiError> {
     require_admin(&ctx)?;
-    let sim = simulator(&state)?;
+    let sim = state.require_simulator()?;
     let cfg = body.map(|b| b.0).unwrap_or_default();
     sim.start(cfg).await;
     Ok(Json(sim.stats().await))
@@ -41,7 +40,7 @@ async fn stop(
     State(state): State<AppState>,
 ) -> Result<Json<SimulatorStats>, ApiError> {
     require_admin(&ctx)?;
-    let sim = simulator(&state)?;
+    let sim = state.require_simulator()?;
     sim.stop().await;
     Ok(Json(sim.stats().await))
 }
@@ -51,7 +50,7 @@ async fn status(
     State(state): State<AppState>,
 ) -> Result<Json<SimulatorStats>, ApiError> {
     require_admin(&ctx)?;
-    let sim = simulator(&state)?;
+    let sim = state.require_simulator()?;
     Ok(Json(sim.stats().await))
 }
 
@@ -77,14 +76,8 @@ async fn events_sse(
 
     let md = state.market_data.market_data();
 
-    let price_pubsub = state
-        .price_pubsub
-        .as_ref()
-        .ok_or_else(|| ApiError::BadRequest("pubsub not available".into()))?;
-    let fx_pubsub = state
-        .fx_pubsub
-        .as_ref()
-        .ok_or_else(|| ApiError::BadRequest("pubsub not available".into()))?;
+    let price_pubsub = state.require_price_pubsub()?;
+    let fx_pubsub = state.require_fx_pubsub()?;
 
     // Subscribe to all known keys.
     let instrument_ids = md.instrument_ids();
@@ -135,11 +128,4 @@ async fn events_sse(
     Ok(Sse::new(merged).keep_alive(
         axum::response::sse::KeepAlive::new().interval(std::time::Duration::from_secs(15)),
     ))
-}
-
-fn simulator(state: &AppState) -> Result<&Arc<crate::simulator::Simulator>, ApiError> {
-    state
-        .simulator
-        .as_ref()
-        .ok_or_else(|| ApiError::BadRequest("simulator not available".into()))
 }

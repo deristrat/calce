@@ -38,4 +38,36 @@ impl AppState {
             .as_ref()
             .ok_or_else(|| crate::error::ApiError::BadRequest("database required".into()))
     }
+
+    pub(crate) fn require_simulator(&self) -> Result<&Arc<Simulator>, crate::error::ApiError> {
+        self.simulator
+            .as_ref()
+            .ok_or_else(|| crate::error::ApiError::BadRequest("simulator not available".into()))
+    }
+
+    pub(crate) fn require_db_simulator(&self) -> Result<&Arc<DbSimulator>, crate::error::ApiError> {
+        self.db_simulator.as_ref().ok_or_else(|| {
+            crate::error::ApiError::BadRequest("database simulator not available".into())
+        })
+    }
+
+    pub(crate) fn require_price_pubsub(&self) -> Result<&Arc<PricePubSub>, crate::error::ApiError> {
+        self.price_pubsub
+            .as_ref()
+            .ok_or_else(|| crate::error::ApiError::BadRequest("price pubsub not available".into()))
+    }
+
+    pub(crate) fn require_fx_pubsub(&self) -> Result<&Arc<FxPubSub>, crate::error::ApiError> {
+        self.fx_pubsub
+            .as_ref()
+            .ok_or_else(|| crate::error::ApiError::BadRequest("fx pubsub not available".into()))
+    }
+
+    pub(crate) fn require_entity_pubsub(
+        &self,
+    ) -> Result<&Arc<EntityPubSub>, crate::error::ApiError> {
+        self.entity_pubsub
+            .as_ref()
+            .ok_or_else(|| crate::error::ApiError::BadRequest("entity pubsub not available".into()))
+    }
 }
