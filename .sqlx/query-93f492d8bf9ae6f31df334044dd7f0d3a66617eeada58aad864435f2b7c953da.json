@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO fx_rates (from_currency, to_currency, rate_date, rate) SELECT u.from_ccy, u.to_ccy, $1, u.rate FROM UNNEST($2::text[], $3::text[], $4::float8[]) AS u(from_ccy, to_ccy, rate) ON CONFLICT (from_currency, to_currency, rate_date) DO UPDATE SET rate = EXCLUDED.rate",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "TextArray",
+        "TextArray",
+        "Float8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "93f492d8bf9ae6f31df334044dd7f0d3a66617eeada58aad864435f2b7c953da"
+}

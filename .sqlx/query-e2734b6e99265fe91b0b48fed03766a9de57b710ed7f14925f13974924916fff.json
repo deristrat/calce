@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT u.external_id, u.email, u.name, o.external_id AS organization_id, o.name AS organization_name, COUNT(DISTINCT t.id)::BIGINT AS trade_count, COUNT(DISTINCT a.id)::BIGINT AS account_count FROM users u LEFT JOIN trades t ON u.id = t.user_id LEFT JOIN organizations o ON u.organization_id = o.id LEFT JOIN accounts a ON u.id = a.user_id GROUP BY u.external_id, u.email, u.name, o.external_id, o.name ORDER BY u.external_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "organization_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "organization_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "trade_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "account_count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "e2734b6e99265fe91b0b48fed03766a9de57b710ed7f14925f13974924916fff"
+}

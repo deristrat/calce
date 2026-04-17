@@ -56,11 +56,7 @@ async fn pick_instrument(db_url: &str) -> Result<i64, Box<dyn Error>> {
     Ok(row.get(0))
 }
 
-async fn upsert_test_price(
-    db_url: &str,
-    inst_id: i64,
-    price: f64,
-) -> Result<(), Box<dyn Error>> {
+async fn upsert_test_price(db_url: &str, inst_id: i64, price: f64) -> Result<(), Box<dyn Error>> {
     let client = connect(db_url).await?;
     client
         .execute(

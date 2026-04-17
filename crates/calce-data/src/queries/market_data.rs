@@ -28,7 +28,7 @@ impl MarketDataRepo {
     }
 
     pub async fn get_all_prices(&self) -> DataResult<Vec<(InstrumentId, NaiveDate, Price)>> {
-        let rows = sqlx::query_as::<_, (String, NaiveDate, f64)>(
+        let rows = sqlx::query!(
             "SELECT i.ticker, p.price_date, p.price FROM prices p \
              JOIN instruments i ON p.instrument_id = i.id \
              ORDER BY i.ticker, p.price_date",
@@ -38,22 +38,28 @@ impl MarketDataRepo {
 
         Ok(rows
             .into_iter()
-            .map(|(id, d, p)| (InstrumentId::new(id), d, Price::new(p)))
+            .map(|r| {
+                (
+                    InstrumentId::new(r.ticker),
+                    r.price_date,
+                    Price::new(r.price),
+                )
+            })
             .collect())
     }
 
     pub async fn get_all_fx_rates(&self) -> DataResult<Vec<(NaiveDate, FxRate)>> {
-        let rows = sqlx::query_as::<_, (String, String, NaiveDate, f64)>(
+        let rows = sqlx::query!(
             "SELECT from_currency, to_currency, rate_date, rate FROM fx_rates ORDER BY rate_date",
         )
         .fetch_all(&self.pool)
         .await?;
 
         rows.into_iter()
-            .map(|(from_str, to_str, date, rate)| {
-                let from = parse_currency("from_currency", from_str)?;
-                let to = parse_currency("to_currency", to_str)?;
-                Ok((date, FxRate::new(from, to, rate)))
+            .map(|r| {
+                let from = parse_currency("from_currency", r.from_currency)?;
+                let to = parse_currency("to_currency", r.to_currency)?;
+                Ok((r.rate_date, FxRate::new(from, to, r.rate)))
             })
             .collect()
     }
@@ -61,13 +67,25 @@ impl MarketDataRepo {
     pub async fn list_instruments(
         &self,
     ) -> DataResult<Vec<(i64, String, String, Option<String>, String, JsonValue)>> {
-        let rows = sqlx::query_as::<_, (i64, String, String, Option<String>, String, JsonValue)>(
+        let rows = sqlx::query!(
             "SELECT id, ticker, currency, name, instrument_type, allocations \
              FROM instruments ORDER BY ticker",
         )
         .fetch_all(&self.pool)
         .await?;
-        Ok(rows)
+        Ok(rows
+            .into_iter()
+            .map(|r| {
+                (
+                    r.id,
+                    r.ticker,
+                    r.currency,
+                    r.name,
+                    r.instrument_type,
+                    r.allocations,
+                )
+            })
+            .collect())
     }
 
     /// Batch upsert prices using a single `UNNEST` query.
@@ -77,17 +95,18 @@ impl MarketDataRepo {
         date: NaiveDate,
         prices: &[f64],
     ) -> DataResult<u64> {
-        let result = sqlx::query(
+        let tickers_owned: Vec<String> = tickers.iter().map(|s| (*s).to_string()).collect();
+        let result = sqlx::query!(
             "INSERT INTO prices (instrument_id, price_date, price) \
              SELECT i.id, $1, u.price \
              FROM UNNEST($2::text[], $3::float8[]) AS u(ticker, price) \
              JOIN instruments i ON i.ticker = u.ticker \
              ON CONFLICT ON CONSTRAINT uq_prices_instrument_date \
              DO UPDATE SET price = EXCLUDED.price",
+            date,
+            &tickers_owned[..],
+            prices,
         )
-        .bind(date)
-        .bind(tickers)
-        .bind(prices)
         .execute(&self.pool)
         .await?;
         Ok(result.rows_affected())
@@ -101,17 +120,19 @@ impl MarketDataRepo {
         date: NaiveDate,
         rates: &[f64],
     ) -> DataResult<u64> {
-        let result = sqlx::query(
+        let from_owned: Vec<String> = from_currencies.iter().map(|s| (*s).to_string()).collect();
+        let to_owned: Vec<String> = to_currencies.iter().map(|s| (*s).to_string()).collect();
+        let result = sqlx::query!(
             "INSERT INTO fx_rates (from_currency, to_currency, rate_date, rate) \
              SELECT u.from_ccy, u.to_ccy, $1, u.rate \
-             FROM UNNEST($2::char(3)[], $3::char(3)[], $4::float8[]) AS u(from_ccy, to_ccy, rate) \
+             FROM UNNEST($2::text[], $3::text[], $4::float8[]) AS u(from_ccy, to_ccy, rate) \
              ON CONFLICT (from_currency, to_currency, rate_date) \
              DO UPDATE SET rate = EXCLUDED.rate",
+            date,
+            &from_owned[..],
+            &to_owned[..],
+            rates,
         )
-        .bind(date)
-        .bind(from_currencies)
-        .bind(to_currencies)
-        .bind(rates)
         .execute(&self.pool)
         .await?;
         Ok(result.rows_affected())

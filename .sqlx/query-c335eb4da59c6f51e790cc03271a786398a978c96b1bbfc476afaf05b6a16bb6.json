@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE user_credentials SET failed_attempts = failed_attempts + 1 WHERE id = $1 RETURNING failed_attempts",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "failed_attempts",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c335eb4da59c6f51e790cc03271a786398a978c96b1bbfc476afaf05b6a16bb6"
+}

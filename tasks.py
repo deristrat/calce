@@ -363,6 +363,21 @@ def pre_commit(c):
     test(c)
 
 
+# ── SQLx ────────────────────────────────────────────────────────────────
+
+
+@task
+def sqlx_prepare(c):
+    """Regenerate the .sqlx/ offline query cache (run after editing queries or migrations)."""
+    c.run("cargo sqlx prepare --workspace", pty=True)
+
+
+@task
+def sqlx_check(c):
+    """Verify .sqlx/ cache matches current queries (requires running, migrated DB)."""
+    c.run("cargo sqlx prepare --check --workspace", pty=True)
+
+
 # ── Utilities ───────────────────────────────────────────────────────────
 
 

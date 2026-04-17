@@ -44,3 +44,22 @@ invoke db          # start postgres
 invoke db-migrate  # run migrations
 invoke db-stop     # stop postgres
 ```
+
+## Queries
+
+All queries use `sqlx::query!` / `query_as!` / `query_scalar!` — checked against
+the live database at `cargo build` time. A committed `.sqlx/` cache at the
+workspace root lets builds succeed without a running DB: sqlx uses the live DB
+when `DATABASE_URL` is set, otherwise falls back to the cache.
+
+After editing a query or running a migration, regenerate the cache and commit
+the diff:
+
+```sh
+invoke sqlx-prepare   # cargo sqlx prepare --workspace
+```
+
+If a build fails with "no cached data for this query", the cache is stale —
+run `invoke sqlx-prepare` and commit the result. `invoke sqlx-check` runs
+`cargo sqlx prepare --check --workspace` to detect query/schema drift without
+regenerating the cache.

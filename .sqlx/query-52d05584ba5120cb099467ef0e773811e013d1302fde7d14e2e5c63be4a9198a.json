@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT from_currency, to_currency, rate_date, rate FROM fx_rates ORDER BY rate_date",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "from_currency",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "to_currency",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "rate_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 3,
+        "name": "rate",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "52d05584ba5120cb099467ef0e773811e013d1302fde7d14e2e5c63be4a9198a"
+}

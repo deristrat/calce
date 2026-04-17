@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO prices (instrument_id, price_date, price) SELECT i.id, $1, u.price FROM UNNEST($2::text[], $3::float8[]) AS u(ticker, price) JOIN instruments i ON i.ticker = u.ticker ON CONFLICT ON CONSTRAINT uq_prices_instrument_date DO UPDATE SET price = EXCLUDED.price",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Date",
+        "TextArray",
+        "Float8Array"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aaabe5a22b13eb03421c4d226f62de133a50ef80788088b15e28f5e50069dc73"
+}

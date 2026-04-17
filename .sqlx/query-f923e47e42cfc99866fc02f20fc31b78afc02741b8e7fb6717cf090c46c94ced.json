@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT i.ticker, p.price_date, p.price FROM prices p JOIN instruments i ON p.instrument_id = i.id ORDER BY i.ticker, p.price_date",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "ticker",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "price_date",
+        "type_info": "Date"
+      },
+      {
+        "ordinal": 2,
+        "name": "price",
+        "type_info": "Float8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "f923e47e42cfc99866fc02f20fc31b78afc02741b8e7fb6717cf090c46c94ced"
+}

@@ -1,0 +1,48 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE users SET name = COALESCE($2, name), email = COALESCE($3, email)\n             WHERE external_id = $1\n             RETURNING external_id, email, name,\n             (SELECT o.external_id FROM organizations o WHERE o.id = users.organization_id) AS \"organization_id?\",\n             created_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "external_id",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "organization_id?",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      null,
+      false
+    ]
+  },
+  "hash": "6fccda5370714deff2e0f92e61854ebcdbdbaf1513398295ac1d34735fe0e102"
+}

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE api_keys SET revoked_at = NOW() FROM organizations o WHERE api_keys.organization_id = o.id AND o.external_id = $2 AND api_keys.id = $1 AND api_keys.revoked_at IS NULL RETURNING api_keys.key_hash",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "key_hash",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "79199f3ade9dda8cabb3e73aab45c67b8f95360ff6d006ca8c828acd5b9d78d6"
+}
